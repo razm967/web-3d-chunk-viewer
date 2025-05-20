@@ -1,103 +1,165 @@
-import Image from "next/image";
+'use client';
 
-export default function Home() {
+import { Suspense, useState, useEffect, KeyboardEvent } from 'react';
+import { Canvas } from '@react-three/fiber';
+import { OrbitControls, PerspectiveCamera, Stats } from '@react-three/drei';
+import Chunk from '@/components/canvas/Chunk';
+import { Voxel, CHUNK_SIZE, CHUNK_HEIGHT } from '@/lib/chunkUtils';
+import {
+  getAvailableBiomes,
+  getBiomeById,
+  generateBiomeSpecificSeed,
+  Biome
+} from '@/lib/biomeManager'; // Import biome utilities
+
+const DEFAULT_BIOME_ID = 'beach'; // Or your preferred default
+
+export default function HomePage() {
+  const [availableBiomes, setAvailableBiomes] = useState<Biome[]>([]);
+  const [currentBiomeId, setCurrentBiomeId] = useState<string>(DEFAULT_BIOME_ID);
+  const [terrainData, setTerrainData] = useState<Voxel[] | null>(null);
+  const [currentSeed, setCurrentSeed] = useState('hello world'); // Generic initial seed
+  const [seedInput, setSeedInput] = useState('hello world');
+  const [currentHdrPath, setCurrentHdrPath] = useState<string>('');
+
+  // Load available biomes on mount
+  useEffect(() => {
+    setAvailableBiomes(getAvailableBiomes());
+  }, []);
+
+  const generateAndSetTerrain = (biomeId: string, seed: string) => {
+    const selectedBiome = getBiomeById(biomeId);
+    if (!selectedBiome) {
+      console.error(`Biome with ID "${biomeId}" not found.`);
+      setTerrainData(null); // Clear terrain if biome is invalid
+      setCurrentHdrPath('');
+      return;
+    }
+
+    const biomeSpecificSeed = generateBiomeSpecificSeed(biomeId, seed);
+    console.log(`Generating terrain for biome: ${selectedBiome.displayName}, Seed: ${seed}, BiomeSpecificSeed: ${biomeSpecificSeed}`);
+    const newTerrainData = selectedBiome.generateChunkData(biomeSpecificSeed);
+    setTerrainData(newTerrainData);
+    setCurrentHdrPath(selectedBiome.settings.hdrPath || ''); // Set HDR path for the Chunk component
+  };
+
+  // Effect to regenerate terrain when currentBiomeId or currentSeed changes
+  useEffect(() => {
+    if (currentBiomeId && currentSeed) {
+      generateAndSetTerrain(currentBiomeId, currentSeed);
+    }
+  }, [currentBiomeId, currentSeed]);
+
+  const handleSeedInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setSeedInput(event.target.value);
+  };
+
+  const handleBiomeChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    setCurrentBiomeId(event.target.value);
+    // Optionally, you might want to reset the seed or generate with the current seed for the new biome immediately.
+    // For now, it will regenerate on the next manual regenerate or if currentSeed changes.
+  };
+
+  const handleRegenerateClick = () => {
+    setCurrentSeed(seedInput); // This will trigger the useEffect above
+    // generateAndSetTerrain(currentBiomeId, seedInput); // Direct call, also an option
+  };
+
+  const handleSeedInputKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Enter') {
+      setCurrentSeed(seedInput);
+    }
+  };
+  
+  const selectedBiomeDisplayName = getBiomeById(currentBiomeId)?.displayName || 'Unknown Biome';
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
-
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+    <div style={{ position: 'relative', width: '100vw', height: '100vh' }}>
+      <div style={{
+        position: 'absolute',
+        top: '10px',
+        left: '10px',
+        zIndex: 1,
+        background: 'rgba(0, 0, 0, 0.7)',
+        padding: '10px',
+        borderRadius: '5px',
+        color: 'white',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '10px',
+        fontFamily: 'sans-serif'
+      }}>
+        <h3 style={{ margin: '0 0 10px 0', fontSize: '1.2em' }}>
+          {/* Display current biome name */}
+          3D Voxel World ({selectedBiomeDisplayName} {CHUNK_SIZE}x{CHUNK_HEIGHT}x{CHUNK_SIZE})
+        </h3>
+        <div>
+          <label htmlFor="biomeSelect" style={{ marginRight: '5px' }}>Biome: </label>
+          <select 
+            id="biomeSelect" 
+            value={currentBiomeId} 
+            onChange={handleBiomeChange}
+            style={{ padding: '5px', borderRadius: '3px', border: '1px solid #555', background: '#333', color: 'white' }}
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+            {availableBiomes.map(biome => (
+              <option key={biome.id} value={biome.id}>
+                {biome.displayName}
+              </option>
+            ))}
+          </select>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
+        <div>
+          <label htmlFor="seedInput" style={{ marginRight: '5px' }}>Seed: </label>
+          <input 
+            id="seedInput" 
+            type="text" 
+            value={seedInput} 
+            onChange={handleSeedInputChange}
+            onKeyDown={handleSeedInputKeyDown}
+            style={{ 
+              padding: '5px', 
+              borderRadius: '3px', 
+              border: '1px solid #555', 
+              background: '#333', 
+              color: 'white' 
+            }}
           />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
+        </div>
+        <button 
+          onClick={handleRegenerateClick} 
+          style={{ 
+            padding: '8px 12px', 
+            background: '#007bff', 
+            color: 'white', 
+            border: 'none', 
+            borderRadius: '3px', 
+            cursor: 'pointer' 
+          }}
         >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
+          Regenerate Terrain
+        </button>
+        <div>Current Biome: {selectedBiomeDisplayName}</div>
+        <div>Current Seed (for biome): {currentSeed}</div>
+        <div>Chunk Size: {CHUNK_SIZE}x{CHUNK_HEIGHT}x{CHUNK_SIZE}</div> 
+      </div>
+      <Canvas style={{ background: '#27272a' }}>
+        <Suspense fallback={null}>
+          <PerspectiveCamera makeDefault position={[CHUNK_SIZE * 0.75, CHUNK_HEIGHT * 1.5, CHUNK_SIZE * 0.75]} fov={75} />
+          <OrbitControls target={[0, 0, 0]} /> 
+          <ambientLight intensity={0.8} />
+          <directionalLight 
+            position={[CHUNK_SIZE / 2, CHUNK_HEIGHT * 2, CHUNK_SIZE / 4]}
+            intensity={1.5}
+            castShadow
+            shadow-mapSize-width={2048} 
+            shadow-mapSize-height={2048}
           />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+          <pointLight position={[-CHUNK_SIZE / 2, -CHUNK_HEIGHT, -CHUNK_SIZE / 2]} intensity={0.5} />
+
+          {terrainData && currentHdrPath && <Chunk voxelData={terrainData} hdrPath={currentHdrPath} />}
+        </Suspense>
+        <Stats />
+      </Canvas>
     </div>
   );
 }
