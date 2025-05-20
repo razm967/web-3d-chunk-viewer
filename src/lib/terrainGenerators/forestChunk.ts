@@ -274,6 +274,7 @@ export function generateForestChunkData(seed?: string): Voxel[] {
         );
         const originalSurfaceYAtEntrance = Math.floor(baseSurfaceY + originalTerrainNoiseAtEntrance);
         
+        // eslint-disable-next-line prefer-const
         entranceY = originalSurfaceYAtEntrance + caveSettings.floorOffset;
 
         // Carve the cave

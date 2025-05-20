@@ -267,7 +267,7 @@ export function generateBeachChunkData(seed?: string): Voxel[] {
       }
 
       if (rockSurfaceY !== -1 && rockSurfaceY >= waterLevel) { // Must be on sand and above water level
-        const rockSize = 1; // Forced to 1x1x1 as per new settings/request
+        // const rockSize = 1; // Forced to 1x1x1 as per new settings/request - REMOVED AGAIN
         // The loop for (let s = 0; s < rockSize; s++) will run once.
         const actualPlaceY = rockSurfaceY + 1;
         if (actualPlaceY < CHUNK_HEIGHT) {

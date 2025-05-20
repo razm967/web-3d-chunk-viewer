@@ -115,8 +115,8 @@ export interface BaseBiomeSettings {
   // Add other common properties if any
 }
 
-export interface DesertBiomeSettingsType extends BaseBiomeSettings {}
-export interface JungleBiomeSettingsType extends BaseBiomeSettings {}
+export type DesertBiomeSettingsType = BaseBiomeSettings;
+export type JungleBiomeSettingsType = BaseBiomeSettings;
 
 export const beachBiomeSettings: BeachBiomeSettingsType = {
   name: "Beach",
