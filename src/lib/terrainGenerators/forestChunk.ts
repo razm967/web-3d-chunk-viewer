@@ -10,11 +10,7 @@ import {
   VOXEL_TYPE_PEBBLE,
   VOXEL_TYPE_STONE,
   VOXEL_TYPE_STONE_LIGHT,
-  VOXEL_TYPE_STONE_DARK,
-  VOXEL_TYPE_GRASS,
-  VOXEL_TYPE_DIRT_LIGHT,
-  VOXEL_TYPE_DIRT_MEDIUM,
-  getVoxel
+  VOXEL_TYPE_STONE_DARK
 } from '../chunkUtils';
 import { forestBiomeSettings as settings } from '../biomeSettings'; // Import forest settings
 import { createNoise2D } from 'simplex-noise';
@@ -282,7 +278,6 @@ export function generateForestChunkData(seed?: string): Voxel[] {
 
         // Carve the cave
         const halfWidth = Math.floor(caveSettings.entranceWidth / 2);
-        const halfHeight = Math.floor(caveSettings.entranceHeight / 2); // Not used for floor, but for ceiling
 
         // Loop to extend the cave until it hits a chunk border
         for (let depth = 0; ; depth++) { // Infinite loop, will break internally

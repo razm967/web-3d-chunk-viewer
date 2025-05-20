@@ -81,7 +81,7 @@ export default function Chunk({
   showWireframe = false,
   hdrPath
 }: ChunkProps) {
-  const { scene, camera } = useThree(); // Get scene and camera
+  const { scene } = useThree(); // Get scene, removed unused camera
 
   // Effect for loading HDR and setting background/environment
   useEffect(() => {

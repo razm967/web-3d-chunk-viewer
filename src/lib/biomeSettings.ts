@@ -1,4 +1,124 @@
-export const beachBiomeSettings = {
+export interface BeachTreeSettings {
+  countMin: number;
+  countMax: number;
+  minHeight: number;
+  maxHeight: number;
+  frondRadius: number;
+  trunkThickness: number;
+  curveFactor: number;
+  placementNoiseScale: number;
+  placementThreshold: number;
+}
+
+export interface BeachRockSettings {
+  countMin: number;
+  countMax: number;
+  sizeMin: number;
+  sizeMax: number;
+  maxPlacementAttempts: number;
+}
+
+export interface BeachGrassSettings {
+  densityFactor: number;
+  minDistanceFromWater: number;
+}
+
+export interface BeachBiomeSettingsType {
+  name: string;
+  hdrPath: string | null;
+  waterLevelFactor: number;
+  beachStartLineZFactor: number;
+  inlandElevationFactor: number;
+  duneVariationFactor: number;
+  generalNoiseScale: number;
+  trees: BeachTreeSettings;
+  rocks: BeachRockSettings;
+  beachGrass: BeachGrassSettings;
+}
+
+export interface ForestTreeSettings {
+  countMin: number;
+  countMax: number;
+  minHeight: number;
+  maxHeight: number;
+  trunkThickness: number;
+  leafLayersMin: number;
+  leafLayersMax: number;
+  leafLayerHeight: number;
+  baseLeafRadiusMax: number;
+  placementNoiseScale: number;
+  placementThreshold: number;
+  minDistFromOtherTree: number;
+  maxPlacementAttempts: number;
+  altLeafChance: number;
+}
+
+export interface ForestPebbleSettings {
+  densityFactor: number;
+  maxPebblesPerChunk: number;
+  maxYLevel: number;
+}
+
+export interface CaveSettings {
+  chance: number;
+  minHillHeightRequired: number;
+  entranceWidth: number;
+  entranceHeight: number;
+  maxDepth: number;
+  floorOffset: number;
+}
+
+export interface BorderHillSettings {
+  chance: number;
+  maxHills: number;
+  minRadius: number;
+  maxRadius: number;
+  minHeight: number;
+  maxHeight: number;
+  borderProximity: number;
+  cave: CaveSettings;
+}
+
+export interface StoneVariationSettings {
+  lightChance: number;
+  darkChance: number;
+}
+
+export interface DirtStoneTransitionSettings {
+  depth: number;
+  mixChance: number;
+}
+
+export interface ForestBiomeSettingsType {
+  name: string;
+  baseHeightFactor: number;
+  terrainNoiseScale: number;
+  terrainNoiseAmplitude: number;
+  voxelTypeId: number;
+  surfaceDirtPatchChance: number;
+  forestFloorDetailChance: number;
+  underSurfaceVoxelTypeId: number;
+  dirtLayerDepth: number;
+  hdrPath: string | null;
+  trees: ForestTreeSettings;
+  pebbles: ForestPebbleSettings;
+  borderHillSettings: BorderHillSettings;
+  stoneVariations: StoneVariationSettings;
+  dirtStoneTransition: DirtStoneTransitionSettings;
+}
+
+// Define more specific types for Desert and Jungle when their settings are fleshed out
+// For now, a placeholder allowing name and other potential common fields
+export interface BaseBiomeSettings {
+  name: string;
+  hdrPath?: string | null; 
+  // Add other common properties if any
+}
+
+export interface DesertBiomeSettingsType extends BaseBiomeSettings {}
+export interface JungleBiomeSettingsType extends BaseBiomeSettings {}
+
+export const beachBiomeSettings: BeachBiomeSettingsType = {
   name: "Beach",
   hdrPath: '/sunset.hdr', // Added HDR path for the beach biome
   waterLevelFactor: 1/6, // Factor of CHUNK_HEIGHT
@@ -35,7 +155,7 @@ export const beachBiomeSettings = {
   // Seashells are removed, so no settings needed here for now
 };
 
-export const forestBiomeSettings = {
+export const forestBiomeSettings: ForestBiomeSettingsType = {
   name: "Forest",
   baseHeightFactor: 1/3,      // Average height of the forest floor
   terrainNoiseScale: 30,      // Scale for terrain undulation
@@ -96,20 +216,20 @@ export const forestBiomeSettings = {
   // TODO: Add other forest specific settings later
 };
 
-export const desertBiomeSettings = {
+export const desertBiomeSettings: DesertBiomeSettingsType = {
     name: "Desert",
     // TODO: Add desert specific settings later
 };
 
-export const jungleBiomeSettings = {
+export const jungleBiomeSettings: JungleBiomeSettingsType = {
     name: "Jungle",
     // TODO: Add jungle specific settings later
 };
 
 // A way to easily access settings by biome name or type
-export const allBiomeSettings: { [key: string]: any } = {
+export const allBiomeSettings: { [key: string]: BeachBiomeSettingsType | ForestBiomeSettingsType | DesertBiomeSettingsType | JungleBiomeSettingsType } = {
   beach: beachBiomeSettings,
   forest: forestBiomeSettings,
-  desert: desertBiomeSettings,
-  jungle: jungleBiomeSettings,
+  desert: desertBiomeSettings as DesertBiomeSettingsType, // Cast for now
+  jungle: jungleBiomeSettings as JungleBiomeSettingsType, // Cast for now
 }; 

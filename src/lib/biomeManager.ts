@@ -1,13 +1,21 @@
 import { generateBeachChunkData } from './terrainGenerators/beachChunk';
 import { generateForestChunkData } from './terrainGenerators/forestChunk';
-import { allBiomeSettings } from './biomeSettings';
+import { 
+    allBiomeSettings,
+    BeachBiomeSettingsType,
+    ForestBiomeSettingsType,
+    DesertBiomeSettingsType,
+    JungleBiomeSettingsType
+} from './biomeSettings';
 import { Voxel } from './chunkUtils';
+
+export type AnyBiomeSettingsType = BeachBiomeSettingsType | ForestBiomeSettingsType | DesertBiomeSettingsType | JungleBiomeSettingsType;
 
 export interface Biome {
   id: string;
   displayName: string;
   generateChunkData: (seed?: string) => Voxel[];
-  settings: any; // Holds settings including hdrPath, voxelTypeId etc.
+  settings: AnyBiomeSettingsType; // Updated from any
 }
 
 export const biomes: { [key: string]: Biome } = {

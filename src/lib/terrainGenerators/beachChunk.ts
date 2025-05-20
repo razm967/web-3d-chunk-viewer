@@ -245,9 +245,11 @@ export function generateBeachChunkData(seed?: string): Voxel[] {
   // --- End of Re-added Palm Tree Generation ---
 
   // --- Generate Small Rocks --- 
-  const numRockClusters = settings.rocks.countMin + Math.floor(prng() * (settings.rocks.countMax - settings.rocks.countMin + 1));
-  for (let r = 0; r < numRockClusters; r++) {
+  const rockSettings = settings.rocks;
+  const rockCount = rockSettings.countMin + Math.floor(prng() * (rockSettings.countMax - rockSettings.countMin + 1));
+  for (let r = 0; r < rockCount; r++) {
     let attempts = 0;
+    let placed = false;
     while (attempts < settings.rocks.maxPlacementAttempts) {
       const rockX = Math.floor(prng() * CHUNK_SIZE);
       const rockZ = Math.floor(prng() * CHUNK_SIZE);
@@ -267,19 +269,12 @@ export function generateBeachChunkData(seed?: string): Voxel[] {
       if (rockSurfaceY !== -1 && rockSurfaceY >= waterLevel) { // Must be on sand and above water level
         const rockSize = 1; // Forced to 1x1x1 as per new settings/request
         // The loop for (let s = 0; s < rockSize; s++) will run once.
-        const placeY = rockSurfaceY; // Place rock AT sand surface Y (effectively replacing it if it was empty or sand)
-                                     // Or place ON TOP if we want it distinct: rockSurfaceY + 1 and check data[rockIndex] === VOXEL_TYPE_EMPTY
-                                     // For a 1x1x1 pebble ON TOP of sand, it should be rockSurfaceY + 1, and check if that spot is empty.
-                                     // Let's assume pebble replaces the top sand block to make it truly part of surface.
-                                     // If it must be ON TOP, then placeY should be rockSurfaceY + 1, and data[rockIndex] should be VOXEL_TYPE_EMPTY.
-                                     // Based on "1x1x1", placing ON the sand makes sense.
-
-        // For a 1x1x1 pebble that sits ON the sand surface:
         const actualPlaceY = rockSurfaceY + 1;
         if (actualPlaceY < CHUNK_HEIGHT) {
             const rockIndex = rockX + (actualPlaceY * CHUNK_SIZE) + (rockZ * CHUNK_SIZE * CHUNK_HEIGHT);
             if (data[rockIndex] === VOXEL_TYPE_EMPTY) { // Only place if the spot above sand is empty
                 data[rockIndex] = VOXEL_TYPE_ROCK;
+                placed = true;
                 break; // Successfully placed a rock
             } else {
                 // Spot obstructed, try another location for this rock cluster
@@ -290,6 +285,9 @@ export function generateBeachChunkData(seed?: string): Voxel[] {
         // If we reach here, placement failed for this attempt, continue while loop
       }
       attempts++;
+    }
+    if (!placed) {
+      // If we reach here, placement failed for this attempt, continue while loop
     }
   }
   // --- End of Small Rock Generation ---
