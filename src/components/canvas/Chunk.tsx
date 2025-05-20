@@ -13,7 +13,14 @@ import {
   VOXEL_TYPE_SAND_LIGHT,
   VOXEL_TYPE_SAND_DARK,
   VOXEL_TYPE_ROCK,         // Added
-  VOXEL_TYPE_BEACH_GRASS   // Added
+  VOXEL_TYPE_BEACH_GRASS,   // Added
+  VOXEL_TYPE_FOREST_TRUNK, // Added for forest biome
+  VOXEL_TYPE_FOREST_LEAVES, // Added for forest biome
+  VOXEL_TYPE_FOREST_FLOOR_DETAIL, // Added
+  VOXEL_TYPE_PEBBLE, // Added
+  VOXEL_TYPE_STONE, // Added
+  VOXEL_TYPE_STONE_LIGHT, // Added
+  VOXEL_TYPE_STONE_DARK,  // Added
 } from '@/lib/chunkUtils';
 import * as THREE from 'three';
 
@@ -21,11 +28,11 @@ interface ChunkProps {
   position?: [number, number, number];
   voxelData?: Voxel[];
   showWireframe?: boolean;
-  hdrPath: string;
+  hdrPath?: string | null;
 }
 
 // Terrain Colors
-const grassColor = new THREE.Color(0x00FF00);      
+const grassColor = new THREE.Color(0x2E6F40);      
 const dirtLightColor = new THREE.Color(0x9b7653);  
 const dirtMediumColor = new THREE.Color(0x70543E); 
 const dirtDarkColor = new THREE.Color(0x4F3A2B);   
@@ -40,6 +47,15 @@ const palmTrunkColor = new THREE.Color(0x8B4513);   // SaddleBrown
 const palmFrondColor = new THREE.Color(0x228B22);   // ForestGreen
 const rockColor = new THREE.Color(0x888888);       // Medium grey for rocks
 const beachGrassColor = new THREE.Color(0xA0A070); // Muted olive/khaki for beach grass
+
+// Forest Biome Colors
+const forestTrunkColor = new THREE.Color(0x5D4037); // Darker brown for forest trunks (e.g., Burnt Umber)
+const forestLeavesColor = new THREE.Color(0x2E7D32); // Darker, rich green for forest leaves (e.g., Pine Green)
+const forestFloorDetailColor = new THREE.Color(0x4A3B31); // Dark, earthy brown for floor details
+const pebbleColor = new THREE.Color(0xA9A9A9); // Light grey for pebbles (DarkGray)
+const stoneColor = new THREE.Color(0x808080); // Medium grey for stone (Gray)
+const stoneLightColor = new THREE.Color(0x989898); // Lighter grey for stone
+const stoneDarkColor = new THREE.Color(0x686868);  // Darker grey for stone
 
 // Water material with transparency
 const waterMaterial = new THREE.MeshStandardMaterial({ 
@@ -67,21 +83,29 @@ export default function Chunk({
 
   // Effect for loading HDR and setting background/environment
   useEffect(() => {
-    const loader = new RGBELoader();
-    loader.load(
-      hdrPath,
-      (texture) => {
-        texture.mapping = THREE.EquirectangularReflectionMapping;
-        scene.background = texture;     // Set HDR as direct background
-        scene.environment = texture;    // Use for scene lighting/reflections
-      },
-      undefined, // onProgress
-      (error) => {
-        console.error('Failed to load HDR: ', error);
-        scene.background = skyBlueColor; // Fallback to solid color for background
-        scene.environment = null;        // Clear environment on error
-      }
-    );
+    console.log(`[Chunk.tsx] useEffect for background/environment. hdrPath: "${hdrPath}"`); // Log received hdrPath
+    if (hdrPath && typeof hdrPath === 'string') {
+      console.log(`[Chunk.tsx] Attempting to load HDR: ${hdrPath}`);
+      const loader = new RGBELoader();
+      loader.load(
+        hdrPath,
+        (texture) => {
+          texture.mapping = THREE.EquirectangularReflectionMapping;
+          scene.background = texture;     // Set HDR as direct background
+          scene.environment = texture;    // Use for scene lighting/reflections
+        },
+        undefined, // onProgress
+        (error) => {
+          console.error(`Failed to load HDR from ${hdrPath}: `, error);
+          scene.background = skyBlueColor; // Fallback to solid color for background on load error
+          scene.environment = null;        // Clear environment on error
+        }
+      );
+    } else {
+      console.log(`[Chunk.tsx] No valid HDR path, setting blue background.`);
+      scene.background = skyBlueColor;
+      scene.environment = null;
+    }
 
     return () => {
       // Cleanup when component unmounts or scene changes
@@ -120,6 +144,15 @@ export default function Chunk({
   const rockMeshRef = useRef<THREE.InstancedMesh>(null!); // Added
   const beachGrassMeshRef = useRef<THREE.InstancedMesh>(null!); // Added
 
+  // Refs for Forest Biome elements
+  const forestTrunkMeshRef = useRef<THREE.InstancedMesh>(null!);
+  const forestLeavesMeshRef = useRef<THREE.InstancedMesh>(null!);
+  const forestFloorDetailMeshRef = useRef<THREE.InstancedMesh>(null!); // Added
+  const pebbleMeshRef = useRef<THREE.InstancedMesh>(null!); // Added
+  const stoneMeshRef = useRef<THREE.InstancedMesh>(null!); // Added
+  const stoneLightMeshRef = useRef<THREE.InstancedMesh>(null!); // Added
+  const stoneDarkMeshRef = useRef<THREE.InstancedMesh>(null!); // Added
+
   // Ref for custom water mesh
   const customWaterMeshRef = useRef<THREE.Mesh>(null!);
 
@@ -133,7 +166,10 @@ export default function Chunk({
         grassMeshRef.current && dirtLightMeshRef.current && dirtMediumMeshRef.current && dirtDarkMeshRef.current &&
         sandMeshRef.current && sandLightMeshRef.current && sandDarkMeshRef.current && sandstoneMeshRef.current && 
         palmTrunkMeshRef.current && palmFrondMeshRef.current &&
-        rockMeshRef.current && beachGrassMeshRef.current;
+        rockMeshRef.current && beachGrassMeshRef.current &&
+        forestTrunkMeshRef.current && forestLeavesMeshRef.current && forestFloorDetailMeshRef.current &&
+        pebbleMeshRef.current && stoneMeshRef.current && 
+        stoneLightMeshRef.current && stoneDarkMeshRef.current;
 
     if (!instancedMeshesReady) return;
     
@@ -158,6 +194,13 @@ export default function Chunk({
     let palmFrondCount = 0;
     let rockCount = 0;        // Added
     let beachGrassCount = 0;  // Added
+    let forestTrunkCount = 0; // Added
+    let forestLeavesCount = 0;// Added
+    let forestFloorDetailCount = 0; // Added
+    let pebbleCount = 0; // Added
+    let stoneCount = 0; // Added
+    let stoneLightCount = 0; // Added
+    let stoneDarkCount = 0; // Added
 
     // Water geometry data
     const waterVertices: number[] = [];
@@ -234,6 +277,27 @@ export default function Chunk({
               break;
             case VOXEL_TYPE_BEACH_GRASS: // Added
               beachGrassMeshRef.current.setMatrixAt(beachGrassCount++, tempObject.matrix);
+              break;
+            case VOXEL_TYPE_FOREST_TRUNK: // Added
+              forestTrunkMeshRef.current.setMatrixAt(forestTrunkCount++, tempObject.matrix);
+              break;
+            case VOXEL_TYPE_FOREST_LEAVES: // Added
+              forestLeavesMeshRef.current.setMatrixAt(forestLeavesCount++, tempObject.matrix);
+              break;
+            case VOXEL_TYPE_FOREST_FLOOR_DETAIL: // Added
+              forestFloorDetailMeshRef.current.setMatrixAt(forestFloorDetailCount++, tempObject.matrix);
+              break;
+            case VOXEL_TYPE_PEBBLE: // Added
+              pebbleMeshRef.current.setMatrixAt(pebbleCount++, tempObject.matrix);
+              break;
+            case VOXEL_TYPE_STONE: // Added
+              stoneMeshRef.current.setMatrixAt(stoneCount++, tempObject.matrix);
+              break;
+            case VOXEL_TYPE_STONE_LIGHT: // Added
+              stoneLightMeshRef.current.setMatrixAt(stoneLightCount++, tempObject.matrix);
+              break;
+            case VOXEL_TYPE_STONE_DARK: // Added
+              stoneDarkMeshRef.current.setMatrixAt(stoneDarkCount++, tempObject.matrix);
               break;
             
             case VOXEL_TYPE_WATER: {
@@ -338,6 +402,13 @@ export default function Chunk({
     palmFrondMeshRef.current.count = palmFrondCount;
     rockMeshRef.current.count = rockCount; // Added
     beachGrassMeshRef.current.count = beachGrassCount; // Added
+    forestTrunkMeshRef.current.count = forestTrunkCount; // Added
+    forestLeavesMeshRef.current.count = forestLeavesCount; // Added
+    forestFloorDetailMeshRef.current.count = forestFloorDetailCount; // Added
+    pebbleMeshRef.current.count = pebbleCount; // Added
+    stoneMeshRef.current.count = stoneCount; // Added
+    stoneLightMeshRef.current.count = stoneLightCount; // Added
+    stoneDarkMeshRef.current.count = stoneDarkCount; // Added
 
     // Update instance matrices for instanced meshes
     if (grassMeshRef.current.instanceMatrix) grassMeshRef.current.instanceMatrix.needsUpdate = true;
@@ -353,6 +424,13 @@ export default function Chunk({
     if (palmFrondMeshRef.current.instanceMatrix) palmFrondMeshRef.current.instanceMatrix.needsUpdate = true;
     if (rockMeshRef.current.instanceMatrix) rockMeshRef.current.instanceMatrix.needsUpdate = true; // Added
     if (beachGrassMeshRef.current.instanceMatrix) beachGrassMeshRef.current.instanceMatrix.needsUpdate = true; // Added
+    if (forestTrunkMeshRef.current.instanceMatrix) forestTrunkMeshRef.current.instanceMatrix.needsUpdate = true; // Added
+    if (forestLeavesMeshRef.current.instanceMatrix) forestLeavesMeshRef.current.instanceMatrix.needsUpdate = true; // Added
+    if (forestFloorDetailMeshRef.current.instanceMatrix) forestFloorDetailMeshRef.current.instanceMatrix.needsUpdate = true; // Added
+    if (pebbleMeshRef.current.instanceMatrix) pebbleMeshRef.current.instanceMatrix.needsUpdate = true; // Added
+    if (stoneMeshRef.current.instanceMatrix) stoneMeshRef.current.instanceMatrix.needsUpdate = true; // Added
+    if (stoneLightMeshRef.current.instanceMatrix) stoneLightMeshRef.current.instanceMatrix.needsUpdate = true; // Added
+    if (stoneDarkMeshRef.current.instanceMatrix) stoneDarkMeshRef.current.instanceMatrix.needsUpdate = true; // Added
 
     // Update custom water mesh
     if (customWaterMeshRef.current) {
@@ -377,102 +455,179 @@ export default function Chunk({
     return () => {
       // Dispose of geometries and materials if they were created manually and are not part of JSX
     };
-  }, [currentVoxelData, showWireframe, scene, hdrPath]); // Added scene and hdrPath to dependencies for background
+  }, [currentVoxelData, showWireframe, scene]); // Removed hdrPath from this effect's deps as it doesn't use it directly
 
   return (
     <group position={position}>
-      {/* Skybox Mesh - REMOVED */}
-      {/* {hdrSkyTexture && (
-        <mesh name="skybox" rotation={[0, Math.PI, 0]} scale={[-1, 1, 1]} > 
-          <sphereGeometry args={[camera.far * 0.45, 60, 40]} /> 
-          <meshBasicMaterial map={hdrSkyTexture} side={THREE.BackSide} depthWrite={false} />
-        </mesh>
-      )} */}
+      {/* Ambient Light for overall scene illumination - reduced for evening */}
+      <ambientLight intensity={0.2} color="#FFDDBB" /> {/* Softer, slightly warm ambient */}
+
+      {/* Directional Light to simulate a low sun and cast long shadows */}
+      <directionalLight 
+        color="#FFA500" // Orange color for sunset
+        position={[15, 7, 10]} // Lowered Y, adjusted X/Z for angled evening light
+        intensity={0.3} // Reduced intensity for evening
+        castShadow 
+        shadow-mapSize-width={1024} 
+        shadow-mapSize-height={1024}
+        shadow-camera-far={50}      // How far the shadow camera can see
+        shadow-camera-left={-20}    // Frustum of the shadow camera
+        shadow-camera-right={20}
+        shadow-camera-top={20}
+        shadow-camera-bottom={-20}
+      />
 
       {/* Existing instanced meshes for voxels... */}
-      <instancedMesh ref={grassMeshRef} args={[undefined, undefined, CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE]} castShadow receiveShadow>
+      <instancedMesh ref={grassMeshRef} args={[undefined, undefined, CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE]} castShadow receiveShadow frustumCulled={false}>
         <boxGeometry args={[1, 1, 1]} />
         <meshStandardMaterial color={grassColor} />
       </instancedMesh>
       {showWireframe && grassMeshRef.current && React.cloneElement(instancedWireframeMaterialElement, { geometry: grassMeshRef.current.geometry })}
       
       {/* Dirt Light */}
-      <instancedMesh ref={dirtLightMeshRef} args={[undefined, undefined, CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE]} castShadow receiveShadow>
+      <instancedMesh ref={dirtLightMeshRef} args={[undefined, undefined, CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE]} castShadow receiveShadow frustumCulled={false}>
         <boxGeometry args={[1, 1, 1]} />
         <meshStandardMaterial color={dirtLightColor} />
       </instancedMesh>
       {showWireframe && dirtLightMeshRef.current && React.cloneElement(instancedWireframeMaterialElement, { geometry: dirtLightMeshRef.current.geometry })}
 
       {/* Dirt Medium */}
-      <instancedMesh ref={dirtMediumMeshRef} args={[undefined, undefined, CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE]} castShadow receiveShadow>
+      <instancedMesh ref={dirtMediumMeshRef} args={[undefined, undefined, CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE]} castShadow receiveShadow frustumCulled={false}>
         <boxGeometry args={[1, 1, 1]} />
         <meshStandardMaterial color={dirtMediumColor} />
       </instancedMesh>
       {showWireframe && dirtMediumMeshRef.current && React.cloneElement(instancedWireframeMaterialElement, { geometry: dirtMediumMeshRef.current.geometry })}
 
       {/* Dirt Dark */}
-      <instancedMesh ref={dirtDarkMeshRef} args={[undefined, undefined, CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE]} castShadow receiveShadow>
+      <instancedMesh ref={dirtDarkMeshRef} args={[undefined, undefined, CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE]} castShadow receiveShadow frustumCulled={false}>
         <boxGeometry args={[1, 1, 1]} />
         <meshStandardMaterial color={dirtDarkColor} />
       </instancedMesh>
       {showWireframe && dirtDarkMeshRef.current && React.cloneElement(instancedWireframeMaterialElement, { geometry: dirtDarkMeshRef.current.geometry })}
       
       {/* Sand */}
-      <instancedMesh ref={sandMeshRef} args={[undefined, undefined, CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE]} castShadow receiveShadow>
+      <instancedMesh ref={sandMeshRef} args={[undefined, undefined, CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE]} castShadow receiveShadow frustumCulled={false}>
         <boxGeometry args={[1, 1, 1]} />
         <meshStandardMaterial color={sandColor} />
       </instancedMesh>
       {showWireframe && sandMeshRef.current && React.cloneElement(instancedWireframeMaterialElement, { geometry: sandMeshRef.current.geometry })}
 
       {/* Sand Light */}
-      <instancedMesh ref={sandLightMeshRef} args={[undefined, undefined, CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE]} castShadow receiveShadow>
+      <instancedMesh ref={sandLightMeshRef} args={[undefined, undefined, CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE]} castShadow receiveShadow frustumCulled={false}>
         <boxGeometry args={[1, 1, 1]} />
         <meshStandardMaterial color={sandLightColor} />
       </instancedMesh>
       {showWireframe && sandLightMeshRef.current && React.cloneElement(instancedWireframeMaterialElement, { geometry: sandLightMeshRef.current.geometry })}
 
       {/* Sand Dark */}
-      <instancedMesh ref={sandDarkMeshRef} args={[undefined, undefined, CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE]} castShadow receiveShadow>
+      <instancedMesh ref={sandDarkMeshRef} args={[undefined, undefined, CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE]} castShadow receiveShadow frustumCulled={false}>
         <boxGeometry args={[1, 1, 1]} />
         <meshStandardMaterial color={sandDarkColor} />
       </instancedMesh>
       {showWireframe && sandDarkMeshRef.current && React.cloneElement(instancedWireframeMaterialElement, { geometry: sandDarkMeshRef.current.geometry })}
       
       {/* Sandstone */}
-      <instancedMesh ref={sandstoneMeshRef} args={[undefined, undefined, CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE]} castShadow receiveShadow>
+      <instancedMesh ref={sandstoneMeshRef} args={[undefined, undefined, CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE]} castShadow receiveShadow frustumCulled={false}>
         <boxGeometry args={[1, 1, 1]} />
         <meshStandardMaterial color={sandstoneColor} />
       </instancedMesh>
       {showWireframe && sandstoneMeshRef.current && React.cloneElement(instancedWireframeMaterialElement, { geometry: sandstoneMeshRef.current.geometry })}
 
       {/* Palm Trunk */}
-      <instancedMesh ref={palmTrunkMeshRef} args={[undefined, undefined, CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE]} castShadow receiveShadow>
+      <instancedMesh ref={palmTrunkMeshRef} args={[undefined, undefined, CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE]} castShadow receiveShadow frustumCulled={false}>
         <boxGeometry args={[1, 1, 1]} />
         <meshStandardMaterial color={palmTrunkColor} />
       </instancedMesh>
       {showWireframe && palmTrunkMeshRef.current && React.cloneElement(instancedWireframeMaterialElement, { geometry: palmTrunkMeshRef.current.geometry })}
 
       {/* Palm Frond */}
-      <instancedMesh ref={palmFrondMeshRef} args={[undefined, undefined, CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE]} castShadow receiveShadow>
+      <instancedMesh ref={palmFrondMeshRef} args={[undefined, undefined, CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE]} castShadow receiveShadow frustumCulled={false}>
         <boxGeometry args={[1, 1, 1]} />
         <meshStandardMaterial color={palmFrondColor} />
       </instancedMesh>
       {showWireframe && palmFrondMeshRef.current && React.cloneElement(instancedWireframeMaterialElement, { geometry: palmFrondMeshRef.current.geometry })}
 
       {/* Rock */}
-      <instancedMesh ref={rockMeshRef} args={[undefined, undefined, CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE]} castShadow receiveShadow>
+      <instancedMesh ref={rockMeshRef} args={[undefined, undefined, CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE]} castShadow receiveShadow frustumCulled={false}>
         <boxGeometry args={[1, 1, 1]} />
         <meshStandardMaterial color={rockColor} />
       </instancedMesh>
       {showWireframe && rockMeshRef.current && React.cloneElement(instancedWireframeMaterialElement, { geometry: rockMeshRef.current.geometry })}
 
       {/* Beach Grass */}
-      <instancedMesh ref={beachGrassMeshRef} args={[undefined, undefined, CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE]} castShadow receiveShadow>
+      <instancedMesh ref={beachGrassMeshRef} args={[undefined, undefined, CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE]} castShadow receiveShadow frustumCulled={false}>
         <boxGeometry args={[1, 1, 1]} />
         <meshStandardMaterial color={beachGrassColor} />
       </instancedMesh>
       {showWireframe && beachGrassMeshRef.current && React.cloneElement(instancedWireframeMaterialElement, { geometry: beachGrassMeshRef.current.geometry })}
       
+      {/* Forest Trunk */}
+      <instancedMesh ref={forestTrunkMeshRef} args={[undefined, undefined, CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE]} castShadow receiveShadow frustumCulled={false}>
+        <boxGeometry args={[1, 1, 1]} />
+        <meshStandardMaterial color={forestTrunkColor} />
+      </instancedMesh>
+      {showWireframe && forestTrunkMeshRef.current && React.cloneElement(instancedWireframeMaterialElement, { geometry: forestTrunkMeshRef.current.geometry })}
+
+      {/* Forest Leaves */}
+      <instancedMesh ref={forestLeavesMeshRef} args={[undefined, undefined, CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE]} castShadow receiveShadow frustumCulled={false}>
+        <boxGeometry args={[1, 1, 1]} />
+        <meshStandardMaterial color={forestLeavesColor} />
+      </instancedMesh>
+      {showWireframe && forestLeavesMeshRef.current && React.cloneElement(instancedWireframeMaterialElement, { geometry: forestLeavesMeshRef.current.geometry })}
+
+      {/* Forest Floor Detail */}
+      <instancedMesh ref={forestFloorDetailMeshRef} args={[undefined, undefined, CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE]} castShadow receiveShadow frustumCulled={false}>
+        <boxGeometry args={[1, 1, 1]} />
+        <meshStandardMaterial color={forestFloorDetailColor} />
+      </instancedMesh>
+      {showWireframe && forestFloorDetailMeshRef.current && React.cloneElement(instancedWireframeMaterialElement, { geometry: forestFloorDetailMeshRef.current.geometry })}
+
+      {/* Pebble */}
+      <instancedMesh ref={pebbleMeshRef} args={[undefined, undefined, CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE]} castShadow receiveShadow frustumCulled={false}>
+        <boxGeometry args={[1, 1, 1]} />
+        <meshStandardMaterial color={pebbleColor} />
+      </instancedMesh>
+      {showWireframe && pebbleMeshRef.current && React.cloneElement(instancedWireframeMaterialElement, { geometry: pebbleMeshRef.current.geometry })}
+
+      {/* Stone */}
+      <instancedMesh 
+        ref={stoneMeshRef} 
+        args={[undefined, undefined, CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE]} 
+        castShadow 
+        receiveShadow 
+        frustumCulled={false}
+      >
+        <boxGeometry args={[1, 1, 1]} />
+        <meshStandardMaterial color={stoneColor} />
+      </instancedMesh>
+      {showWireframe && stoneMeshRef.current && React.cloneElement(instancedWireframeMaterialElement, { geometry: stoneMeshRef.current.geometry })}
+
+      {/* Stone Light */}
+      <instancedMesh 
+        ref={stoneLightMeshRef} 
+        args={[undefined, undefined, CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE]} 
+        castShadow 
+        receiveShadow 
+        frustumCulled={false}
+      >
+        <boxGeometry args={[1, 1, 1]} />
+        <meshStandardMaterial color={stoneLightColor} />
+      </instancedMesh>
+      {showWireframe && stoneLightMeshRef.current && React.cloneElement(instancedWireframeMaterialElement, { geometry: stoneLightMeshRef.current.geometry })}
+
+      {/* Stone Dark */}
+      <instancedMesh 
+        ref={stoneDarkMeshRef} 
+        args={[undefined, undefined, CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE]} 
+        castShadow 
+        receiveShadow 
+        frustumCulled={false}
+      >
+        <boxGeometry args={[1, 1, 1]} />
+        <meshStandardMaterial color={stoneDarkColor} />
+      </instancedMesh>
+      {showWireframe && stoneDarkMeshRef.current && React.cloneElement(instancedWireframeMaterialElement, { geometry: stoneDarkMeshRef.current.geometry })}
+
       {/* Custom Water Mesh */}
       <mesh ref={customWaterMeshRef} material={showWireframe ? wireframeMaterialInstance : waterMaterial} castShadow receiveShadow>
         {/* BufferGeometry will be attached here dynamically in useEffect */}

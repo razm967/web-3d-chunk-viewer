@@ -27,6 +27,15 @@ export const VOXEL_TYPE_SAND_DARK = 13;
 export const VOXEL_TYPE_ROCK = 14;
 export const VOXEL_TYPE_BEACH_GRASS = 15;
 
+// New Voxel Types for Forest Biome
+export const VOXEL_TYPE_FOREST_TRUNK = 16; // For straight, conifer-like trunks
+export const VOXEL_TYPE_FOREST_LEAVES = 17; // For conifer-like foliage
+export const VOXEL_TYPE_FOREST_FLOOR_DETAIL = 18; // For patches of fallen leaves, darker soil, etc.
+export const VOXEL_TYPE_PEBBLE = 19; // For small stones/pebbles on the ground
+export const VOXEL_TYPE_STONE = 20; // For a solid stone base layer
+export const VOXEL_TYPE_STONE_LIGHT = 21; // Lighter variation of stone
+export const VOXEL_TYPE_STONE_DARK = 22;  // Darker variation of stone
+
 export type Voxel = number; 
 
 // Helper to get 2D noise normalized to 0-1 range

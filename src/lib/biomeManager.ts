@@ -1,5 +1,5 @@
 import { generateBeachChunkData } from './terrainGenerators/beachChunk';
-import { generateTestPlainChunkData } from './terrainGenerators/testPlainChunk';
+import { generateForestChunkData } from './terrainGenerators/forestChunk';
 import { allBiomeSettings } from './biomeSettings';
 import { Voxel } from './chunkUtils';
 
@@ -17,11 +17,11 @@ export const biomes: { [key: string]: Biome } = {
     generateChunkData: generateBeachChunkData,
     settings: allBiomeSettings.beach,
   },
-  testPlain: {
-    id: 'testPlain',
-    displayName: 'Test Plain',
-    generateChunkData: generateTestPlainChunkData,
-    settings: allBiomeSettings.testPlain,
+  forest: {
+    id: 'forest',
+    displayName: 'Forest',
+    generateChunkData: generateForestChunkData,
+    settings: allBiomeSettings.forest,
   },
   // Add other biomes here as they are developed
   // forest: {

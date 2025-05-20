@@ -31,16 +31,19 @@ export default function HomePage() {
     const selectedBiome = getBiomeById(biomeId);
     if (!selectedBiome) {
       console.error(`Biome with ID "${biomeId}" not found.`);
-      setTerrainData(null); // Clear terrain if biome is invalid
+      setTerrainData(null);
       setCurrentHdrPath('');
       return;
     }
 
     const biomeSpecificSeed = generateBiomeSpecificSeed(biomeId, seed);
-    console.log(`Generating terrain for biome: ${selectedBiome.displayName}, Seed: ${seed}, BiomeSpecificSeed: ${biomeSpecificSeed}`);
+    console.log(`[page.tsx] Generating terrain for biome: ${selectedBiome.displayName}, Seed: ${seed}, BiomeSpecificSeed: ${biomeSpecificSeed}`);
+    console.log(`[page.tsx] Biome settings hdrPath: ${selectedBiome.settings.hdrPath}`); // Log the raw hdrPath from settings
     const newTerrainData = selectedBiome.generateChunkData(biomeSpecificSeed);
     setTerrainData(newTerrainData);
-    setCurrentHdrPath(selectedBiome.settings.hdrPath || ''); // Set HDR path for the Chunk component
+    const newHdrPath = selectedBiome.settings.hdrPath || '';
+    setCurrentHdrPath(newHdrPath);
+    console.log(`[page.tsx] Terrain data length: ${newTerrainData?.length}, Current HDR Path set to: "${newHdrPath}"`);
   };
 
   // Effect to regenerate terrain when currentBiomeId or currentSeed changes
@@ -72,6 +75,8 @@ export default function HomePage() {
   };
   
   const selectedBiomeDisplayName = getBiomeById(currentBiomeId)?.displayName || 'Unknown Biome';
+
+  console.log(`[page.tsx] Rendering Chunk. terrainData is ${terrainData ? 'set' : 'null'}, currentHdrPath is "${currentHdrPath}"`);
 
   return (
     <div style={{ position: 'relative', width: '100vw', height: '100vh' }}>
@@ -156,7 +161,7 @@ export default function HomePage() {
           />
           <pointLight position={[-CHUNK_SIZE / 2, -CHUNK_HEIGHT, -CHUNK_SIZE / 2]} intensity={0.5} />
 
-          {terrainData && currentHdrPath && <Chunk voxelData={terrainData} hdrPath={currentHdrPath} />}
+          {terrainData && <Chunk voxelData={terrainData} hdrPath={currentHdrPath} />}
         </Suspense>
         <Stats />
       </Canvas>

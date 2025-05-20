@@ -39,7 +39,7 @@ export default function Scene() {
 
   return (
     <div style={{ position: 'relative', width: '100vw', height: '100vh' }}>
-      <Canvas style={{ background: 'lightblue' }}> 
+      <Canvas style={{ background: 'lightblue' }} shadows={true}> 
         <PerspectiveCamera 
           makeDefault 
           position={[CHUNK_SIZE * 0.75, CHUNK_HEIGHT * 0.75, CHUNK_SIZE * 1.25]}
