@@ -60,7 +60,8 @@ export const forestBiomeSettings = {
     placementNoiseScale: 20,    // Noise scale for tree placement suitability
     placementThreshold: 0.4,    // Threshold for placement noise (higher = fewer, more selective spots)
     minDistFromOtherTree: 5,    // Minimum distance between tree bases
-    maxPlacementAttempts: 30    // Attempts to find a spot for each tree
+    maxPlacementAttempts: 30,   // Attempts to find a spot for each tree
+    altLeafChance: 0.3          // Chance for a leaf to be the alternate color
   },
   pebbles: {
     densityFactor: 0.05, // 5% chance for a pebble on an eligible ground block

@@ -5,11 +5,16 @@ import {
   VOXEL_TYPE_EMPTY,
   VOXEL_TYPE_FOREST_TRUNK,
   VOXEL_TYPE_FOREST_LEAVES,
+  VOXEL_TYPE_FOREST_LEAVES_ALT,
   VOXEL_TYPE_FOREST_FLOOR_DETAIL,
   VOXEL_TYPE_PEBBLE,
   VOXEL_TYPE_STONE,
   VOXEL_TYPE_STONE_LIGHT,
-  VOXEL_TYPE_STONE_DARK
+  VOXEL_TYPE_STONE_DARK,
+  VOXEL_TYPE_GRASS,
+  VOXEL_TYPE_DIRT_LIGHT,
+  VOXEL_TYPE_DIRT_MEDIUM,
+  getVoxel
 } from '../chunkUtils';
 import { forestBiomeSettings as settings } from '../biomeSettings'; // Import forest settings
 import { createNoise2D } from 'simplex-noise';
@@ -397,7 +402,11 @@ export function generateForestChunkData(seed?: string): Voxel[] {
               const trunkZ = treeBaseZ - offset + dz;
               if (trunkX >= 0 && trunkX < CHUNK_SIZE && trunkZ >= 0 && trunkZ < CHUNK_SIZE) {
                 const trunkIdx = trunkX + (y * CHUNK_SIZE) + (trunkZ * CHUNK_SIZE * CHUNK_HEIGHT);
-                if(data[trunkIdx] === VOXEL_TYPE_EMPTY) data[trunkIdx] = VOXEL_TYPE_FOREST_TRUNK;
+                // Ensure we don't overwrite existing parts of other trees or important features
+                const existingVoxelAtTrunk = data[trunkIdx]; // Using direct array access as getVoxel might be for out-of-chunk reads or complex data structures
+                if(existingVoxelAtTrunk === VOXEL_TYPE_EMPTY) {
+                    data[trunkIdx] = VOXEL_TYPE_FOREST_TRUNK;
+                }
               }
             }
           }
@@ -415,7 +424,7 @@ export function generateForestChunkData(seed?: string): Voxel[] {
 
         for (let dy = -Math.floor(treeSettings.leafLayerHeight / 2); dy <= Math.ceil(treeSettings.leafLayerHeight / 2); dy++) {
           const y = layerCenterY + dy;
-          if (y <= treeSurfaceY || y >= CHUNK_HEIGHT) continue;
+          if (y <= treeSurfaceY || y >= CHUNK_HEIGHT) continue; // Ensure leaves are above ground and within chunk height
 
           for (let dx = -currentRadius; dx <= currentRadius; dx++) {
             for (let dz = -currentRadius; dz <= currentRadius; dz++) {
@@ -426,9 +435,15 @@ export function generateForestChunkData(seed?: string): Voxel[] {
 
               if (leafX >= 0 && leafX < CHUNK_SIZE && leafZ >= 0 && leafZ < CHUNK_SIZE) {
                 const leafIdx = leafX + (y * CHUNK_SIZE) + (leafZ * CHUNK_SIZE * CHUNK_HEIGHT);
-                // Prefer placing leaves if spot is empty or already a leaf (for density)
-                if (data[leafIdx] === VOXEL_TYPE_EMPTY || data[leafIdx] === VOXEL_TYPE_FOREST_LEAVES) {
-                  data[leafIdx] = VOXEL_TYPE_FOREST_LEAVES;
+                const existingVoxel = data[leafIdx]; // Using direct array access
+
+                // Prefer placing leaves if spot is empty or already a leaf type (for density and intermingling)
+                if (existingVoxel === VOXEL_TYPE_EMPTY || existingVoxel === VOXEL_TYPE_FOREST_LEAVES || existingVoxel === VOXEL_TYPE_FOREST_LEAVES_ALT) {
+                  // Determine leaf type for this specific voxel
+                  const currentLeafType = prng() < settings.trees.altLeafChance 
+                                        ? VOXEL_TYPE_FOREST_LEAVES_ALT 
+                                        : VOXEL_TYPE_FOREST_LEAVES;
+                  data[leafIdx] = currentLeafType;
                 }
               }
             }

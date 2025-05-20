@@ -21,6 +21,7 @@ import {
   VOXEL_TYPE_STONE, // Added
   VOXEL_TYPE_STONE_LIGHT, // Added
   VOXEL_TYPE_STONE_DARK,  // Added
+  VOXEL_TYPE_FOREST_LEAVES_ALT // Added for forest biome alternate leaves
 } from '@/lib/chunkUtils';
 import * as THREE from 'three';
 
@@ -56,6 +57,7 @@ const pebbleColor = new THREE.Color(0xA9A9A9); // Light grey for pebbles (DarkGr
 const stoneColor = new THREE.Color(0x808080); // Medium grey for stone (Gray)
 const stoneLightColor = new THREE.Color(0x989898); // Lighter grey for stone
 const stoneDarkColor = new THREE.Color(0x686868);  // Darker grey for stone
+const forestLeavesAltColor = new THREE.Color(0x558B2F); // Alternate leaf color (e.g. a slightly different shade of green)
 
 // Water material with transparency
 const waterMaterial = new THREE.MeshStandardMaterial({ 
@@ -152,6 +154,7 @@ export default function Chunk({
   const stoneMeshRef = useRef<THREE.InstancedMesh>(null!); // Added
   const stoneLightMeshRef = useRef<THREE.InstancedMesh>(null!); // Added
   const stoneDarkMeshRef = useRef<THREE.InstancedMesh>(null!); // Added
+  const forestLeavesAltMeshRef = useRef<THREE.InstancedMesh>(null!); // Ref for alternate leaves
 
   // Ref for custom water mesh
   const customWaterMeshRef = useRef<THREE.Mesh>(null!);
@@ -169,7 +172,7 @@ export default function Chunk({
         rockMeshRef.current && beachGrassMeshRef.current &&
         forestTrunkMeshRef.current && forestLeavesMeshRef.current && forestFloorDetailMeshRef.current &&
         pebbleMeshRef.current && stoneMeshRef.current && 
-        stoneLightMeshRef.current && stoneDarkMeshRef.current;
+        stoneLightMeshRef.current && stoneDarkMeshRef.current && forestLeavesAltMeshRef.current;
 
     if (!instancedMeshesReady) return;
     
@@ -201,6 +204,7 @@ export default function Chunk({
     let stoneCount = 0; // Added
     let stoneLightCount = 0; // Added
     let stoneDarkCount = 0; // Added
+    let forestLeavesAltCount = 0; // Counter for alternate leaves
 
     // Water geometry data
     const waterVertices: number[] = [];
@@ -298,6 +302,9 @@ export default function Chunk({
               break;
             case VOXEL_TYPE_STONE_DARK: // Added
               stoneDarkMeshRef.current.setMatrixAt(stoneDarkCount++, tempObject.matrix);
+              break;
+            case VOXEL_TYPE_FOREST_LEAVES_ALT: // Handling for alternate leaves
+              forestLeavesAltMeshRef.current.setMatrixAt(forestLeavesAltCount++, tempObject.matrix);
               break;
             
             case VOXEL_TYPE_WATER: {
@@ -409,6 +416,7 @@ export default function Chunk({
     stoneMeshRef.current.count = stoneCount; // Added
     stoneLightMeshRef.current.count = stoneLightCount; // Added
     stoneDarkMeshRef.current.count = stoneDarkCount; // Added
+    forestLeavesAltMeshRef.current.count = forestLeavesAltCount; // Set count for alternate leaves
 
     // Update instance matrices for instanced meshes
     if (grassMeshRef.current.instanceMatrix) grassMeshRef.current.instanceMatrix.needsUpdate = true;
@@ -431,6 +439,7 @@ export default function Chunk({
     if (stoneMeshRef.current.instanceMatrix) stoneMeshRef.current.instanceMatrix.needsUpdate = true; // Added
     if (stoneLightMeshRef.current.instanceMatrix) stoneLightMeshRef.current.instanceMatrix.needsUpdate = true; // Added
     if (stoneDarkMeshRef.current.instanceMatrix) stoneDarkMeshRef.current.instanceMatrix.needsUpdate = true; // Added
+    if (forestLeavesAltMeshRef.current.instanceMatrix) forestLeavesAltMeshRef.current.instanceMatrix.needsUpdate = true; // Update alternate leaves matrix
 
     // Update custom water mesh
     if (customWaterMeshRef.current) {
@@ -627,6 +636,19 @@ export default function Chunk({
         <meshStandardMaterial color={stoneDarkColor} />
       </instancedMesh>
       {showWireframe && stoneDarkMeshRef.current && React.cloneElement(instancedWireframeMaterialElement, { geometry: stoneDarkMeshRef.current.geometry })}
+
+      {/* Forest Leaves Alternate */}
+      <instancedMesh 
+        ref={forestLeavesAltMeshRef} 
+        args={[undefined, undefined, CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE]} 
+        castShadow 
+        receiveShadow 
+        frustumCulled={false}
+      >
+        <boxGeometry args={[1, 1, 1]} />
+        <meshStandardMaterial color={forestLeavesAltColor} />
+      </instancedMesh>
+      {showWireframe && forestLeavesAltMeshRef.current && React.cloneElement(instancedWireframeMaterialElement, { geometry: forestLeavesAltMeshRef.current.geometry })}
 
       {/* Custom Water Mesh */}
       <mesh ref={customWaterMeshRef} material={showWireframe ? wireframeMaterialInstance : waterMaterial} castShadow receiveShadow>

@@ -35,6 +35,7 @@ export const VOXEL_TYPE_PEBBLE = 19; // For small stones/pebbles on the ground
 export const VOXEL_TYPE_STONE = 20; // For a solid stone base layer
 export const VOXEL_TYPE_STONE_LIGHT = 21; // Lighter variation of stone
 export const VOXEL_TYPE_STONE_DARK = 22;  // Darker variation of stone
+export const VOXEL_TYPE_FOREST_LEAVES_ALT = 23; // Alternative leaf color for forest trees
 
 export type Voxel = number; 
 
