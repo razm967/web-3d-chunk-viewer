@@ -300,7 +300,7 @@ export function generateMountainChunkData(seed?: string): Voxel[] {
         if ((blockType === VOXEL_TYPE_STONE || 
              blockType === VOXEL_TYPE_STONE_LIGHT || 
              blockType === VOXEL_TYPE_STONE_DARK) && 
-            y > CHUNK_HEIGHT * 0.3) { // Snow line at 65% of chunk height
+            y > CHUNK_HEIGHT * 0.5) { // Snow line at 65% of chunk height
           
           // Add snow layer on top if there's space
           const snowY = y + 1;

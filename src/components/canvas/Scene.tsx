@@ -7,13 +7,14 @@ import Chunk from './Chunk';
 import { 
   CHUNK_SIZE, 
   CHUNK_HEIGHT,
-  generateTerrainChunkData,
   Voxel 
 } from '@/lib/chunkUtils';
+import { biomes } from '@/lib/biomeManager';
 
 export default function Scene() {
   const [currentSeed, setCurrentSeed] = useState<string>('hello world');
-  const [voxelData, setVoxelData] = useState<Voxel[]>(() => generateTerrainChunkData(currentSeed));
+  const [currentBiome, setCurrentBiome] = useState<string>('desert');
+  const [voxelData, setVoxelData] = useState<Voxel[]>(() => biomes[currentBiome].generateChunkData(currentSeed));
   const [showWireframe, setShowWireframe] = useState(false);
   const [key, setKey] = useState(0);
 
@@ -21,9 +22,15 @@ export default function Scene() {
     setCurrentSeed(event.target.value);
   };
 
+  const handleBiomeChange = (event: ChangeEvent<HTMLSelectElement>) => {
+    setCurrentBiome(event.target.value);
+    setVoxelData(biomes[event.target.value].generateChunkData(currentSeed));
+    setKey(prevKey => prevKey + 1);
+  };
+
   const regenerateChunkWithSeed = () => {
     console.log("Regenerating with seed:", currentSeed);
-    setVoxelData(generateTerrainChunkData(currentSeed)); 
+    setVoxelData(biomes[currentBiome].generateChunkData(currentSeed));
     setKey(prevKey => prevKey + 1);
   };
 
@@ -57,12 +64,19 @@ export default function Scene() {
         />
 
         <Suspense fallback={null}>
-          <Chunk key={key} voxelData={voxelData} showWireframe={showWireframe} position={[0,0,0]} />
+          <Chunk 
+            key={key} 
+            voxelData={voxelData} 
+            showWireframe={showWireframe} 
+            position={[0,0,0]} 
+            hdrPath={biomes[currentBiome].settings.hdrPath}
+          />
         </Suspense>
         
         <OrbitControls target={[0, CHUNK_HEIGHT / 3, 0]} />
         <Stats />
       </Canvas>
+      
       <div style={{
         position: 'absolute',
         top: '20px',
@@ -77,6 +91,30 @@ export default function Scene() {
         width: '260px'
       }}>
         <p style={{textAlign: 'center', fontWeight: 'bold', marginBottom: '5px'}}>Voxel Terrain</p>
+        
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          <label htmlFor="biomeSelect" style={{ marginBottom: '5px', fontSize: '0.9em', color: '#DDD' }}>Biome:</label>
+          <select
+            id="biomeSelect"
+            value={currentBiome}
+            onChange={handleBiomeChange}
+            style={{ 
+              padding: '8px 10px',
+              borderRadius: '4px',
+              border: '1px solid #777',
+              backgroundColor: '#444',
+              color: '#FFF',
+              fontSize: '0.9em'
+            }}
+          >
+            {Object.values(biomes).map(biome => (
+              <option key={biome.id} value={biome.id}>
+                {biome.displayName}
+              </option>
+            ))}
+          </select>
+        </div>
+
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           <label htmlFor="seedInput" style={{ marginBottom: '5px', fontSize: '0.9em', color: '#DDD' }}>Seed:</label>
           <input 
@@ -95,6 +133,7 @@ export default function Scene() {
             }}
           />
         </div>
+        
         <button 
           onClick={regenerateChunkWithSeed} 
           style={{ 
@@ -109,6 +148,7 @@ export default function Scene() {
         >
           Regenerate Terrain
         </button>
+        
         <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '5px' }}>
           <input type="checkbox" checked={showWireframe} onChange={toggleWireframe} />
           Show Wireframe

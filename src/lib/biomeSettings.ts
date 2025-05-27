@@ -1,3 +1,5 @@
+import { CHUNK_HEIGHT } from './chunkUtils';
+
 export interface BeachTreeSettings {
   countMin: number;
   countMax: number;
@@ -107,14 +109,6 @@ export interface ForestBiomeSettingsType {
   dirtStoneTransition: DirtStoneTransitionSettings;
 }
 
-// Define more specific types for Desert and Jungle when their settings are fleshed out
-// For now, a placeholder allowing name and other potential common fields
-export interface BaseBiomeSettings {
-  name: string;
-  hdrPath?: string | null; 
-  // Add other common properties if any
-}
-
 // Mountain biome interfaces
 export interface MountainVegetationSettings {
   grassDensityFactor: number; // Chance for grass at lower elevations
@@ -170,9 +164,6 @@ export interface MountainBiomeSettingsType {
   snow: MountainSnowSettings;
   rocks: MountainRockSettings;
 }
-
-export type DesertBiomeSettingsType = BaseBiomeSettings;
-export type JungleBiomeSettingsType = BaseBiomeSettings;
 
 export const beachBiomeSettings: BeachBiomeSettingsType = {
   name: "Beach",
@@ -310,7 +301,7 @@ export const mountainBiomeSettings: MountainBiomeSettingsType = {
 
   snow: {
     snowLineFactor: 1/3, // Snow appears above 2/3 chunk height
-    snowThickness: 4, // Up to 4 layers of snow for dramatic peaks
+    snowThickness: 2, // Up to 4 layers of snow for dramatic peaks
     snowCoverageFactor: 0.8, // 80% snow coverage at eligible elevations
   },
 
@@ -323,21 +314,54 @@ export const mountainBiomeSettings: MountainBiomeSettingsType = {
   },
 };
 
-export const desertBiomeSettings: DesertBiomeSettingsType = {
-    name: "Desert",
-    // TODO: Add desert specific settings later
-};
+export interface DesertDuneSettings {
+  noiseScale: number;
+  amplitude: number;
+  frequency: number;
+  ridgeOffset: number;
+}
 
-export const jungleBiomeSettings: JungleBiomeSettingsType = {
-    name: "Jungle",
-    // TODO: Add jungle specific settings later
+export interface DesertCactusSettings {
+  chance: number;
+  minHeight: number;
+  maxHeight: number;
+  maxCactiPerChunk: number;
+  minDistanceBetween: number;
+}
+
+export interface DesertBiomeSettingsType {
+  name: string;
+  hdrPath: string | null;
+  baseHeight: number;
+  dunes: DesertDuneSettings;
+  cacti: DesertCactusSettings;
+  sandVariationChance: number;
+}
+
+export const desertBiomeSettings: DesertBiomeSettingsType = {
+  name: "Desert",
+  hdrPath: '/desert.hdr',
+  baseHeight: CHUNK_HEIGHT / 3,
+  dunes: {
+    noiseScale: 90,
+    amplitude: 10,
+    frequency: 0.02,
+    ridgeOffset: 0.6
+  },
+  cacti: {
+    chance: 0.02,
+    minHeight: 5,
+    maxHeight: 12,
+    maxCactiPerChunk: 12,
+    minDistanceBetween: 8
+  },
+  sandVariationChance: 0.3
 };
 
 // A way to easily access settings by biome name or type
-export const allBiomeSettings: { [key: string]: BeachBiomeSettingsType | ForestBiomeSettingsType | MountainBiomeSettingsType | DesertBiomeSettingsType | JungleBiomeSettingsType } = {
+export const allBiomeSettings = {
   beach: beachBiomeSettings,
   forest: forestBiomeSettings,
   mountain: mountainBiomeSettings,
-  desert: desertBiomeSettings as DesertBiomeSettingsType, // Cast for now
-  jungle: jungleBiomeSettings as JungleBiomeSettingsType, // Cast for now
+  desert: desertBiomeSettings,
 }; 
