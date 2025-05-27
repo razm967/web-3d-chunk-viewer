@@ -3,8 +3,8 @@
 import { createNoise2D } from 'simplex-noise';
 import Alea from 'alea'; // Import Alea
 
-export const CHUNK_SIZE = 64;
-export const CHUNK_HEIGHT = 64; // Can be different from width/depth if needed, but for now same.
+export const CHUNK_SIZE = 128;
+export const CHUNK_HEIGHT = 128; // Can be different from width/depth if needed, but for now same.
 
 // Voxel Types
 export const VOXEL_TYPE_EMPTY = 0;
@@ -36,6 +36,7 @@ export const VOXEL_TYPE_STONE = 20; // For a solid stone base layer
 export const VOXEL_TYPE_STONE_LIGHT = 21; // Lighter variation of stone
 export const VOXEL_TYPE_STONE_DARK = 22;  // Darker variation of stone
 export const VOXEL_TYPE_FOREST_LEAVES_ALT = 23; // Alternative leaf color for forest trees
+export const VOXEL_TYPE_SNOW = 24; // White snow for mountain peaks
 
 export type Voxel = number; 
 
@@ -51,9 +52,9 @@ export function generateTerrainChunkData(seed?: string): Voxel[] {
   const noise2D = createNoise2D(prng); // Create noise function with seeded PRNG
 
   const data = new Uint8Array(CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE).fill(VOXEL_TYPE_EMPTY);
-  const baseTerrainHeight = Math.floor(CHUNK_HEIGHT / 3); // Average height of terrain
-  const noiseScale = 25; // How zoomed in/out the noise is. Larger = smoother features.
-  const noiseAmplitude = CHUNK_HEIGHT / 4; // Max height variation due to noise
+  const baseTerrainHeight = Math.floor(CHUNK_HEIGHT / 3) * 2; // Average height of terrain, doubled
+  const noiseScale = 50; // How zoomed in/out the noise is. Larger = smoother features. Was 25, doubled
+  const noiseAmplitude = (CHUNK_HEIGHT / 4) * 2; // Max height variation due to noise, doubled
 
   for (let x = 0; x < CHUNK_SIZE; x++) {
     for (let z = 0; z < CHUNK_SIZE; z++) {
@@ -94,11 +95,11 @@ export function generateTerrainChunkData(seed?: string): Voxel[] {
 export function generateMushroomChunkData(): Voxel[] {
   const data = new Uint8Array(CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE).fill(VOXEL_TYPE_EMPTY);
   const center = CHUNK_SIZE / 2;
-  const stemRadius = 2;
-  const stemHeight = 10;
-  const stemBaseY = Math.floor(CHUNK_HEIGHT / 3); // Place mushroom on average terrain height for context
-  const capRadius = 6;
-  const capCenterY = stemBaseY + stemHeight + 2;
+  const stemRadius = 4;
+  const stemHeight = 20;
+  const stemBaseY = Math.floor(CHUNK_HEIGHT / 3) * 2;
+  const capRadius = 12;
+  const capCenterY = stemBaseY + stemHeight + 4;
 
   for (let x = 0; x < CHUNK_SIZE; x++) {
     for (let y = 0; y < CHUNK_HEIGHT; y++) {
@@ -130,7 +131,7 @@ export function generateFlatChunkData(): Voxel[] {
   const data = new Uint8Array(CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE).fill(VOXEL_TYPE_EMPTY);
   for (let x = 0; x < CHUNK_SIZE; x++) {
     for (let z = 0; z < CHUNK_SIZE; z++) {
-      for (let y = 0; y < CHUNK_HEIGHT / 3; y++) { // Fill bottom third with dark dirt
+      for (let y = 0; y < Math.floor(CHUNK_HEIGHT / 3) * 2; y++) { // Fill bottom third with dark dirt (adjusting for new height)
         const index = x + (y * CHUNK_SIZE) + (z * CHUNK_SIZE * CHUNK_HEIGHT);
         data[index] = VOXEL_TYPE_DIRT_DARK;
       }

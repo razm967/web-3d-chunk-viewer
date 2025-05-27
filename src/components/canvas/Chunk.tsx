@@ -223,7 +223,7 @@ export default function Chunk({
       waterVertexIndex += 4;
     };
 
-    const epsilon = 0.02; // Increased offset to prevent Z-fighting
+    const epsilon = 0.1; // Increased offset to prevent Z-fighting
 
     for (let x = 0; x < CHUNK_SIZE; x++) {
       for (let y = 0; y < CHUNK_HEIGHT; y++) { 

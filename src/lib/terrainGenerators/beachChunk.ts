@@ -177,24 +177,38 @@ export function generateBeachChunkData(seed?: string): Voxel[] {
 
     if (surfaceY !== -1) { 
       const treeHeight = minPalmHeight + Math.floor(prng() * (maxPalmHeight - minPalmHeight + 1));
+      
+      // Enhanced trunk curving with more visible curve
+      const curveDirectionX = (prng() - 0.5) * 2; // Random direction between -1 and 1
+      const curveDirectionZ = (prng() - 0.5) * 2;
+      const curveIntensity = 0.6 + prng() * 0.8; // Increased intensity: 0.6 to 1.4 (was 0.2 to 0.5)
+      
       let currentTrunkTipX = treeBaseX + Math.floor(trunkThickness / 2);
       let currentTrunkTipZ = treeBaseZ + Math.floor(trunkThickness / 2);
       
       for (let h = 1; h <= treeHeight; h++) {
         const yProgress = h / treeHeight;
-        const curveDeltaX = Math.sin(yProgress * Math.PI) * (noise2DTrunkCurve(currentTrunkTipX * 0.1, h * 0.2) * 2 - 1) * curveFactor * (trunkThickness + 0.5);
-        const curveDeltaZ = Math.sin(yProgress * Math.PI) * (noise2DTrunkCurve(currentTrunkTipZ * 0.1 + 100, h * 0.2) * 2 - 1) * curveFactor * (trunkThickness + 0.5);
+        
+        // More visible curving with stronger transitions
+        const curveFalloff = Math.sin(yProgress * Math.PI) * 0.8; // Increased falloff multiplier
+        const noiseX = noise2DTrunkCurve(currentTrunkTipX * 0.05, h * 0.1);
+        const noiseZ = noise2DTrunkCurve(currentTrunkTipZ * 0.05 + 100, h * 0.1);
+        
+        // More visible curve combination
+        const curveDeltaX = (curveDirectionX * curveFalloff * curveIntensity + noiseX * 0.3) * curveFactor * 2; // Increased multipliers
+        const curveDeltaZ = (curveDirectionZ * curveFalloff * curveIntensity + noiseZ * 0.3) * curveFactor * 2;
 
         currentTrunkTipX = Math.round(currentTrunkTipX + curveDeltaX);
         currentTrunkTipZ = Math.round(currentTrunkTipZ + curveDeltaZ);
         currentTrunkTipX = Math.max(0, Math.min(CHUNK_SIZE - trunkThickness, currentTrunkTipX)); 
         currentTrunkTipZ = Math.max(0, Math.min(CHUNK_SIZE - trunkThickness, currentTrunkTipZ));
 
+        // Place trunk blocks at the curved position
         for (let dx = 0; dx < trunkThickness; dx++) {
             for (let dz = 0; dz < trunkThickness; dz++) {
                 const placeX = currentTrunkTipX + dx; 
                 const placeZ = currentTrunkTipZ + dz;
-                if (surfaceY + h < CHUNK_HEIGHT && placeX >=0 && placeX < CHUNK_SIZE && placeZ >=0 && placeZ < CHUNK_SIZE) {
+                if (surfaceY + h < CHUNK_HEIGHT && placeX >= 0 && placeX < CHUNK_SIZE && placeZ >= 0 && placeZ < CHUNK_SIZE) {
                     const trunkIndex = placeX + ((surfaceY + h) * CHUNK_SIZE) + (placeZ * CHUNK_SIZE * CHUNK_HEIGHT);
                     if(data[trunkIndex] === VOXEL_TYPE_EMPTY || data[trunkIndex] === VOXEL_TYPE_WATER) {
                         data[trunkIndex] = VOXEL_TYPE_PALM_TRUNK;
@@ -204,26 +218,31 @@ export function generateBeachChunkData(seed?: string): Voxel[] {
         }
       }
       
+      // Enhanced frond generation with bigger, thicker leaves
       const frondBaseY = surfaceY + treeHeight + 1;
-      const numFrondLayers = 3; 
-      const frondLength = frondRadius; 
+      const numFrondLayers = 4; 
+      const enlargedFrondRadius = frondRadius * 1.5; // Make fronds 50% bigger
 
       for (let l = 0; l < numFrondLayers; l++) { 
         const layerY = frondBaseY + l;
         if (layerY >= CHUNK_HEIGHT) continue;
-        const numFrondsInLayer = 8 - l * 2; 
-        const currentLayerFrondLength = Math.max(1, frondLength - l * 1.5); 
+        const numFrondsInLayer = 8 - l * 1; // More fronds per layer
+        const currentLayerFrondLength = Math.max(3, enlargedFrondRadius - l * 1.8); 
         
         for (let f = 0; f < numFrondsInLayer; f++) { 
-            const angle = (f / numFrondsInLayer) * Math.PI * 2 + (prng() - 0.5) * 0.5; 
+            // Better randomized frond directions
+            const baseAngle = (f / numFrondsInLayer) * Math.PI * 2;
+            const angleRandomization = (prng() - 0.5) * 0.8; // More angle variation
+            const angle = baseAngle + angleRandomization;
+            
             let frondTipX = currentTrunkTipX + Math.floor(trunkThickness/2); 
             let frondTipZ = currentTrunkTipZ + Math.floor(trunkThickness/2);
 
             for (let len = 0; len < currentLayerFrondLength; len++) {
                 const stepX = Math.cos(angle) * (1 + (prng()-0.5)*0.3 ); 
                 const stepZ = Math.sin(angle) * (1 + (prng()-0.5)*0.3 );
-                const droopFactor = Math.pow(len / currentLayerFrondLength, 2);
-                const droop = droopFactor * (frondRadius / 2.0); 
+                const droopFactor = Math.pow(len / currentLayerFrondLength, 1.5); // Gentler droop
+                const droop = droopFactor * (enlargedFrondRadius / 2.5); // Adjusted for bigger fronds
                 
                 frondTipX = Math.round(frondTipX + stepX);
                 frondTipZ = Math.round(frondTipZ + stepZ);
@@ -236,6 +255,30 @@ export function generateBeachChunkData(seed?: string): Voxel[] {
                 const frondIndex = frondTipX + (frondY * CHUNK_SIZE) + (frondTipZ * CHUNK_SIZE * CHUNK_HEIGHT);
                 if (data[frondIndex] === VOXEL_TYPE_EMPTY || data[frondIndex] === VOXEL_TYPE_WATER) {
                     data[frondIndex] = VOXEL_TYPE_PALM_FROND;
+                }
+                
+                // Add thickness to fronds - make them much thicker
+                const thicknessRadius = len < currentLayerFrondLength * 0.6 ? 2 : 1; // Thicker for longer portion
+                for (let tx = -thicknessRadius; tx <= thicknessRadius; tx++) {
+                    for (let tz = -thicknessRadius; tz <= thicknessRadius; tz++) {
+                        if (tx === 0 && tz === 0) continue; // Skip center (already placed)
+                        
+                        const thickX = frondTipX + tx;
+                        const thickZ = frondTipZ + tz;
+                        
+                        if (thickX >= 0 && thickX < CHUNK_SIZE && thickZ >= 0 && thickZ < CHUNK_SIZE) {
+                            // Add some randomness to thickness placement
+                            const distance = Math.sqrt(tx*tx + tz*tz);
+                            const thicknessChance = thicknessRadius === 2 ? 0.7 : 0.8;
+                            
+                            if (distance <= thicknessRadius && prng() < thicknessChance) {
+                                const thickIndex = thickX + (frondY * CHUNK_SIZE) + (thickZ * CHUNK_SIZE * CHUNK_HEIGHT);
+                                if (data[thickIndex] === VOXEL_TYPE_EMPTY) {
+                                    data[thickIndex] = VOXEL_TYPE_PALM_FROND;
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
