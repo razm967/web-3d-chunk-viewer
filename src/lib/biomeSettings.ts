@@ -153,6 +153,13 @@ export interface MountainTerrainSettings {
   detailNoiseAmplitude: number; // Small height variations
   valleyDepthFactor: number; // How deep valleys can go below base height
   peakHeightFactor: number; // How high peaks can rise above base height
+  lakeSettings: {
+    chance: number; // Chance for a lake to appear in the chunk
+    minSize: number; // Minimum radius of the lake
+    maxSize: number; // Maximum radius of the lake
+    depthFactor: number; // How deep the lake can be (factor of CHUNK_HEIGHT)
+    waterLevel: number; // Water level relative to lake bottom
+  };
 }
 
 export interface MountainBiomeSettingsType {
@@ -279,6 +286,13 @@ export const mountainBiomeSettings: MountainBiomeSettingsType = {
     detailNoiseAmplitude: 6, // Sharp surface texture
     valleyDepthFactor: 1/15, // Extremely deep valleys
     peakHeightFactor: 9/10, // Nearly reach chunk top for dramatic spikes
+    lakeSettings: {
+      chance: 0.8, // 80% chance for a lake
+      minSize: 15, // Minimum radius of 15 blocks
+      maxSize: 25, // Maximum radius of 25 blocks
+      depthFactor: 1/8, // Lake can be up to 1/8 of chunk height deep
+      waterLevel: 4, // Water level is 4 blocks above lake bottom
+    }
   },
 
   vegetation: {

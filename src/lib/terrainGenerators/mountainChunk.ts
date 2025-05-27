@@ -13,7 +13,8 @@ import {
   VOXEL_TYPE_FOREST_TRUNK,
   VOXEL_TYPE_FOREST_LEAVES,
   VOXEL_TYPE_ROCK,
-  VOXEL_TYPE_SNOW
+  VOXEL_TYPE_SNOW,
+  VOXEL_TYPE_WATER
 } from '../chunkUtils';
 import { mountainBiomeSettings as settings } from '../biomeSettings';
 
@@ -49,6 +50,7 @@ export function generateMountainChunkData(seed?: string): Voxel[] {
   const detailNoise = createNoise2D(Alea(seed + "detail"));
   const vegetationNoise = createNoise2D(Alea(seed + "vegetation"));
   const rockNoise = createNoise2D(Alea(seed + "rocks"));
+  const lakeNoise = createNoise2D(Alea(seed + "lake")); // New noise for lake shape
 
   const data = new Uint8Array(CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE).fill(VOXEL_TYPE_EMPTY);
   
@@ -58,57 +60,122 @@ export function generateMountainChunkData(seed?: string): Voxel[] {
   const valleyDepth = Math.floor(CHUNK_HEIGHT * settings.terrain.valleyDepthFactor);
   const peakHeight = Math.floor(CHUNK_HEIGHT * settings.terrain.peakHeightFactor);
   
+  // Generate lake if chance permits
+  let hasLake = false;
+  let lakeCenter = { x: 0, z: 0 };
+  let lakeRadius = 0;
+  let lakeBottom = 0;
+  
+  if (prng() < settings.terrain.lakeSettings.chance) {
+    hasLake = true;
+    // Place lake in a lower elevation area
+    lakeRadius = settings.terrain.lakeSettings.minSize + 
+                 Math.floor(prng() * (settings.terrain.lakeSettings.maxSize - settings.terrain.lakeSettings.minSize));
+    
+    // Find a suitable location for the lake (in a valley)
+    let bestLocation = { x: CHUNK_SIZE/2, z: CHUNK_SIZE/2 };
+    let lowestElevation = Infinity;
+    
+    // Sample several locations to find a good valley
+    for (let attempt = 0; attempt < 10; attempt++) {
+      const testX = Math.floor(lakeRadius + prng() * (CHUNK_SIZE - 2 * lakeRadius));
+      const testZ = Math.floor(lakeRadius + prng() * (CHUNK_SIZE - 2 * lakeRadius));
+      
+      const elevation = getNormalizedNoise(
+        primaryNoise, testX, testZ,
+        settings.terrain.primaryNoiseScale,
+        settings.terrain.primaryNoiseAmplitude
+      );
+      
+      if (elevation < lowestElevation) {
+        lowestElevation = elevation;
+        bestLocation = { x: testX, z: testZ };
+      }
+    }
+    
+    lakeCenter = bestLocation;
+    lakeBottom = Math.floor(baseHeight * 0.7); // Lake bottom is below base height
+  }
+  
+  // Generate heightmap with lake depression
   for (let x = 0; x < CHUNK_SIZE; x++) {
     heightMap[x] = [];
     for (let z = 0; z < CHUNK_SIZE; z++) {
-      // Large-scale mountain shapes
+      // Calculate standard terrain height
       const primaryHeight = getNormalizedNoise(
         primaryNoise, x, z,
         settings.terrain.primaryNoiseScale,
         settings.terrain.primaryNoiseAmplitude
       );
       
-      // Medium-scale terrain features
       const secondaryHeight = getNormalizedNoise(
         secondaryNoise, x, z,
         settings.terrain.secondaryNoiseScale,
         settings.terrain.secondaryNoiseAmplitude
       );
       
-      // Fine surface details
       const detailHeight = getNormalizedNoise(
         detailNoise, x, z,
         settings.terrain.detailNoiseScale,
         settings.terrain.detailNoiseAmplitude
       );
       
-      // Create extremely sharp and spiky mountain peaks
       const combinedNoise = (primaryHeight * 0.8) + (secondaryHeight * 0.15) + (detailHeight * 0.05);
-      
-      // Apply multiple transformations for ultra-sharp spikes
       let normalizedNoise = combinedNoise / settings.terrain.primaryNoiseAmplitude;
-      
-      // Create sharp spikes using power function with high exponent
       const spikeNoise = Math.pow(normalizedNoise, 2.5) * settings.terrain.primaryNoiseAmplitude;
-      
-      // Add sharp ridges using absolute value function for jagged edges
       const ridgeNoise = Math.abs(secondaryHeight - settings.terrain.secondaryNoiseAmplitude/2) * 2;
+      let totalHeight = baseHeight + spikeNoise + (ridgeNoise * 0.3);
       
-      // Combine for ultra-sharp terrain
-      const totalHeight = baseHeight + spikeNoise + (ridgeNoise * 0.3);
+      // Modify height for lake area
+      if (hasLake) {
+        const dx = x - lakeCenter.x;
+        const dz = z - lakeCenter.z;
+        const distanceToLake = Math.sqrt(dx * dx + dz * dz);
+        
+        if (distanceToLake < lakeRadius) {
+          // Create smooth lake depression
+          const lakeDepth = CHUNK_HEIGHT * settings.terrain.lakeSettings.depthFactor;
+          const depthFactor = 1 - Math.pow(distanceToLake / lakeRadius, 2);
+          const lakeHeight = lakeBottom + settings.terrain.lakeSettings.waterLevel;
+          
+          // Blend lake with surrounding terrain
+          const blendFactor = Math.max(0, Math.min(1, (lakeRadius - distanceToLake) / (lakeRadius * 0.2)));
+          totalHeight = totalHeight * (1 - blendFactor) + lakeHeight * blendFactor;
+        }
+      }
       
-      // Clamp to valley and peak limits but allow full range
       heightMap[x][z] = Math.floor(Math.max(valleyDepth, Math.min(peakHeight, totalHeight)));
     }
   }
   
-  // Generate base terrain
+  // Generate base terrain with lake
   for (let x = 0; x < CHUNK_SIZE; x++) {
     for (let z = 0; z < CHUNK_SIZE; z++) {
       const surfaceHeight = heightMap[x][z];
       
+      // Check if this position is within the lake
+      let isInLake = false;
+      let waterLevel = 0;
+      if (hasLake) {
+        const dx = x - lakeCenter.x;
+        const dz = z - lakeCenter.z;
+        const distanceToLake = Math.sqrt(dx * dx + dz * dz);
+        
+        if (distanceToLake < lakeRadius) {
+          isInLake = true;
+          waterLevel = lakeBottom + settings.terrain.lakeSettings.waterLevel;
+        }
+      }
+      
       for (let y = 0; y <= surfaceHeight && y < CHUNK_HEIGHT; y++) {
         const index = x + (y * CHUNK_SIZE) + (z * CHUNK_SIZE * CHUNK_HEIGHT);
+        
+        // Add water for lake
+        if (isInLake && y > lakeBottom && y <= waterLevel) {
+          data[index] = VOXEL_TYPE_WATER;
+          continue;
+        }
+        
         const depthFromSurface = surfaceHeight - y;
         
         if (depthFromSurface === 0) {
@@ -219,21 +286,52 @@ export function generateMountainChunkData(seed?: string): Voxel[] {
   // Add additional snow layers on peaks
   for (let x = 0; x < CHUNK_SIZE; x++) {
     for (let z = 0; z < CHUNK_SIZE; z++) {
-      const surfaceHeight = heightMap[x][z];
-      const elevationFactor = surfaceHeight / CHUNK_HEIGHT;
-      
-      if (elevationFactor >= settings.snow.snowLineFactor) {
-        const snowLayers = Math.floor(prng() * settings.snow.snowThickness) + 1;
+      // Find the surface block
+      for (let y = CHUNK_HEIGHT - 1; y >= 0; y--) {
+        const index = x + (y * CHUNK_SIZE) + (z * CHUNK_SIZE * CHUNK_HEIGHT);
+        const blockType = data[index];
         
-        for (let layer = 1; layer <= snowLayers; layer++) {
-          const snowY = surfaceHeight + layer;
-          if (snowY < CHUNK_HEIGHT && prng() < settings.snow.snowCoverageFactor * (1 - layer * 0.2)) {
+        // Skip if we hit water or empty space
+        if (blockType === VOXEL_TYPE_EMPTY || blockType === VOXEL_TYPE_WATER) {
+          continue;
+        }
+
+        // Check if this is a stone block and above snow line
+        if ((blockType === VOXEL_TYPE_STONE || 
+             blockType === VOXEL_TYPE_STONE_LIGHT || 
+             blockType === VOXEL_TYPE_STONE_DARK) && 
+            y > CHUNK_HEIGHT * 0.3) { // Snow line at 65% of chunk height
+          
+          // Add snow layer on top if there's space
+          const snowY = y + 1;
+          if (snowY < CHUNK_HEIGHT) {
             const snowIndex = x + (snowY * CHUNK_SIZE) + (z * CHUNK_SIZE * CHUNK_HEIGHT);
             if (data[snowIndex] === VOXEL_TYPE_EMPTY) {
               data[snowIndex] = VOXEL_TYPE_SNOW;
+              
+              // 50% chance to add a second layer of snow
+              const secondLayerY = snowY + 1;
+              if (secondLayerY < CHUNK_HEIGHT && prng() < 0.5) {
+                const secondLayerIndex = x + (secondLayerY * CHUNK_SIZE) + (z * CHUNK_SIZE * CHUNK_HEIGHT);
+                if (data[secondLayerIndex] === VOXEL_TYPE_EMPTY) {
+                  data[secondLayerIndex] = VOXEL_TYPE_SNOW;
+                  
+                  // 50% chance for a third layer
+                  const thirdLayerY = secondLayerY + 1;
+                  if (thirdLayerY < CHUNK_HEIGHT && prng() < 0.5) {
+                    const thirdLayerIndex = x + (thirdLayerY * CHUNK_SIZE) + (z * CHUNK_SIZE * CHUNK_HEIGHT);
+                    if (data[thirdLayerIndex] === VOXEL_TYPE_EMPTY) {
+                      data[thirdLayerIndex] = VOXEL_TYPE_SNOW;
+                    }
+                  }
+                }
+              }
             }
           }
         }
+        
+        // We found the surface block, no need to check deeper
+        break;
       }
     }
   }
@@ -245,10 +343,20 @@ export function generateMountainChunkData(seed?: string): Voxel[] {
       const elevationFactor = surfaceHeight / CHUNK_HEIGHT;
       const slope = calculateSlope(heightMap, x, z);
       
-      // Trees only at lower elevations, gentle slopes, and with vegetation noise
+      // Check if this position is within the lake - skip trees if so
+      let isInLake = false;
+      if (hasLake) {
+        const dx = x - lakeCenter.x;
+        const dz = z - lakeCenter.z;
+        const distanceToLake = Math.sqrt(dx * dx + dz * dz);
+        isInLake = distanceToLake < lakeRadius;
+      }
+      
+      // Trees only at lower elevations, gentle slopes, with vegetation noise, and not in lake
       if (elevationFactor <= settings.vegetation.maxTreeElevationFactor && 
           slope < 0.3 && 
-          prng() < settings.vegetation.treeDensityFactor) {
+          prng() < settings.vegetation.treeDensityFactor &&
+          !isInLake) {
         
         const vegetationValue = (vegetationNoise(x / 15, z / 15) + 1) / 2;
         if (vegetationValue > 0.6) { // Higher threshold for sparser tree placement
@@ -313,8 +421,17 @@ export function generateMountainChunkData(seed?: string): Voxel[] {
           const surfaceHeight = heightMap[boulderX][boulderZ];
           const slope = calculateSlope(heightMap, boulderX, boulderZ);
           
-          // Boulders on moderate slopes
-          if (slope > 0.1 && slope < 0.6) {
+          // Check if boulder would be in lake area
+          let isInLake = false;
+          if (hasLake) {
+            const dx = boulderX - lakeCenter.x;
+            const dz = boulderZ - lakeCenter.z;
+            const distanceToLake = Math.sqrt(dx * dx + dz * dz);
+            isInLake = distanceToLake < lakeRadius;
+          }
+          
+          // Boulders on moderate slopes and not in lake
+          if (slope > 0.1 && slope < 0.6 && !isInLake) {
             const boulderSize = settings.rocks.boulderMinSize + 
                               Math.floor(prng() * (settings.rocks.boulderMaxSize - settings.rocks.boulderMinSize));
             
@@ -353,8 +470,17 @@ export function generateMountainChunkData(seed?: string): Voxel[] {
       const surfaceHeight = heightMap[x][z];
       const slope = calculateSlope(heightMap, x, z);
       
-      // Scattered rocks on steep slopes
-      if (slope > 0.3 && prng() < settings.rocks.rockFallDensity) {
+      // Check if this position is within the lake - skip rocks if so
+      let isInLake = false;
+      if (hasLake) {
+        const dx = x - lakeCenter.x;
+        const dz = z - lakeCenter.z;
+        const distanceToLake = Math.sqrt(dx * dx + dz * dz);
+        isInLake = distanceToLake < lakeRadius;
+      }
+      
+      // Scattered rocks on steep slopes and not in lake
+      if (slope > 0.3 && prng() < settings.rocks.rockFallDensity && !isInLake) {
         const rockValue = (rockNoise(x / 15, z / 15) + 1) / 2;
         if (rockValue > 0.6) {
           const rockY = surfaceHeight + 1;
