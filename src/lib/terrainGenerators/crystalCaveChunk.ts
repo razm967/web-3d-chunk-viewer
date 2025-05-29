@@ -1,4 +1,4 @@
-import { createNoise2D, createNoise3D } from 'simplex-noise';
+import { createNoise2D } from 'simplex-noise';
 import Alea from 'alea';
 import {
   CHUNK_SIZE,
@@ -10,15 +10,9 @@ import {
   VOXEL_TYPE_STONE_LIGHT,
   VOXEL_TYPE_DIRT_MEDIUM,
   VOXEL_TYPE_CRYSTAL_RED,
-  VOXEL_TYPE_CRYSTAL_BLUE,
-  VOXEL_TYPE_CRYSTAL_GREEN,
   VOXEL_TYPE_CRYSTAL_PURPLE,
   VOXEL_TYPE_CRYSTAL_CLEAR,
-  VOXEL_TYPE_CAVE_WALL,
-  VOXEL_TYPE_CAVE_FLOOR,
-  VOXEL_TYPE_GLOWSTONE
 } from '../chunkUtils';
-import { crystalCaveBiomeSettings as settings } from '../biomeSettings';
 
 // Helper to get 2D noise normalized to 0-1 range
 function getNormalizedNoise2D(noiseFunc: (x: number, y: number) => number, x: number, z: number, scale: number): number {
@@ -124,8 +118,6 @@ export function generateCrystalCaveChunkData(seed?: string): Voxel[] {
   // Create noise functions for tunnel variation and crystal placement
   const tunnelNoise = createNoise2D(Alea(seed + "tunnel"));
   const surfaceNoise = createNoise2D(Alea(seed + "surface"));
-  const crystalNoise = createNoise2D(Alea(seed + "crystal"));
-  const crystal3DNoise = createNoise3D(Alea(seed + "crystal3d")); // Add 3D noise for crystal shapes
   
   // Initialize with stone
   const data = new Uint8Array(CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE);

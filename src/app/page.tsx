@@ -41,17 +41,11 @@ export default function HomePage() {
   const [showLoadingOverlay, setShowLoadingOverlay] = useState(false);
   
   // World viewer state
-  const [availableBiomes, setAvailableBiomes] = useState<Biome[]>([]);
   const [terrainData, setTerrainData] = useState<Voxel[] | null>(null);
   const [currentHdrPath, setCurrentHdrPath] = useState<string>('');
   const [seedInput, setSeedInput] = useState('');
   const [showControls, setShowControls] = useState(false);
   const [cameraMode, setCameraMode] = useState<CameraMode>('orbit');
-
-  // Load available biomes on mount
-  useEffect(() => {
-    setAvailableBiomes(getAvailableBiomes());
-  }, []);
 
   const handleBiomeSelect = async (biomeId: string, seed: string) => {
     setSelectedBiome(biomeId);

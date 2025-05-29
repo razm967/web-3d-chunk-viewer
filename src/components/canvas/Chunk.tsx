@@ -153,9 +153,6 @@ const wireframeMaterialInstance = new THREE.MeshBasicMaterial({ color: "black", 
 // Original JSX element for wireframe on instanced meshes
 const instancedWireframeMaterialElement = <meshBasicMaterial color="black" wireframe={true} />;
 
-// Define sky colors
-const skyBlueColor = new THREE.Color(0xADD8E6); // Light blue for sky
-
 export default function Chunk({ 
   position = [0, 0, 0], 
   voxelData: initialVoxelData,
@@ -224,7 +221,7 @@ export default function Chunk({
       scene.background = null; // Clear background reference
       scene.environment = null; // Clear environment reference
     };
-  }, [scene, hdrPath]); // Removed gl from dependency array
+  }, [scene, hdrPath, gl]); // Added gl back to dependency array
 
   // Existing refs
   const grassMeshRef = useRef<THREE.InstancedMesh>(null!);

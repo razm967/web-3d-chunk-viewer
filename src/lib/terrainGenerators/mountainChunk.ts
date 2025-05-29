@@ -50,7 +50,6 @@ export function generateMountainChunkData(seed?: string): Voxel[] {
   const detailNoise = createNoise2D(Alea(seed + "detail"));
   const vegetationNoise = createNoise2D(Alea(seed + "vegetation"));
   const rockNoise = createNoise2D(Alea(seed + "rocks"));
-  const lakeNoise = createNoise2D(Alea(seed + "lake")); // New noise for lake shape
 
   const data = new Uint8Array(CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE).fill(VOXEL_TYPE_EMPTY);
   
@@ -121,7 +120,7 @@ export function generateMountainChunkData(seed?: string): Voxel[] {
       );
       
       const combinedNoise = (primaryHeight * 0.8) + (secondaryHeight * 0.15) + (detailHeight * 0.05);
-      let normalizedNoise = combinedNoise / settings.terrain.primaryNoiseAmplitude;
+      const normalizedNoise = combinedNoise / settings.terrain.primaryNoiseAmplitude;
       const spikeNoise = Math.pow(normalizedNoise, 2.5) * settings.terrain.primaryNoiseAmplitude;
       const ridgeNoise = Math.abs(secondaryHeight - settings.terrain.secondaryNoiseAmplitude/2) * 2;
       let totalHeight = baseHeight + spikeNoise + (ridgeNoise * 0.3);
@@ -134,8 +133,6 @@ export function generateMountainChunkData(seed?: string): Voxel[] {
         
         if (distanceToLake < lakeRadius) {
           // Create smooth lake depression
-          const lakeDepth = CHUNK_HEIGHT * settings.terrain.lakeSettings.depthFactor;
-          const depthFactor = 1 - Math.pow(distanceToLake / lakeRadius, 2);
           const lakeHeight = lakeBottom + settings.terrain.lakeSettings.waterLevel;
           
           // Blend lake with surrounding terrain

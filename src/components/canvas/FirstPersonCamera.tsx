@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef, useEffect } from 'react';
+import { useRef, useEffect } from 'react';
 import { useThree, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { CHUNK_SIZE, CHUNK_HEIGHT, Voxel, VOXEL_TYPE_EMPTY } from '@/lib/chunkUtils';
@@ -23,8 +23,6 @@ export default function FirstPersonCamera({
   const { camera, gl } = useThree();
   const keysPressed = useRef<Set<string>>(new Set());
   const euler = useRef(new THREE.Euler(0, 0, 0, 'YXZ'));
-  const velocity = useRef(new THREE.Vector3());
-  const direction = useRef(new THREE.Vector3());
   const forward = useRef(new THREE.Vector3());
   const right = useRef(new THREE.Vector3());
   const isLocked = useRef(false);
@@ -238,9 +236,6 @@ export default function FirstPersonCamera({
       forward.current.normalize();
       
       right.current.crossVectors(forward.current, camera.up).normalize();
-
-      // Store current position for collision detection
-      const currentPos = camera.position.clone();
 
       // Calculate desired movement based on pressed keys (acceleration, not instant velocity)
       const acceleration = new THREE.Vector3(0, 0, 0);
