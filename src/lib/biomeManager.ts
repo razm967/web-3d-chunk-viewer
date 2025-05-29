@@ -1,17 +1,19 @@
 import { generateBeachChunkData } from './terrainGenerators/beachChunk';
 import { generateForestChunkData } from './terrainGenerators/forestChunk';
 import { generateMountainChunkData } from './terrainGenerators/mountainChunk';
-import { generateDesertChunkData } from './terrainGenerators/desertChunk';
+import { generateCrystalCaveChunkData } from './terrainGenerators/crystalCaveChunk';
 import { 
     allBiomeSettings,
     BeachBiomeSettingsType,
     ForestBiomeSettingsType,
     MountainBiomeSettingsType,
-    DesertBiomeSettingsType
+    DesertBiomeSettingsType,
+    JungleBiomeSettingsType,
+    CrystalCaveBiomeSettingsType
 } from './biomeSettings';
 import { Voxel } from './chunkUtils';
 
-export type AnyBiomeSettingsType = BeachBiomeSettingsType | ForestBiomeSettingsType | MountainBiomeSettingsType | DesertBiomeSettingsType;
+export type AnyBiomeSettingsType = BeachBiomeSettingsType | ForestBiomeSettingsType | MountainBiomeSettingsType | DesertBiomeSettingsType | JungleBiomeSettingsType | CrystalCaveBiomeSettingsType;
 
 export interface Biome {
   id: string;
@@ -39,11 +41,11 @@ export const biomes: { [key: string]: Biome } = {
     generateChunkData: generateMountainChunkData,
     settings: allBiomeSettings.mountain,
   },
-  desert: {
-    id: 'desert',
-    displayName: 'Desert',
-    generateChunkData: generateDesertChunkData,
-    settings: allBiomeSettings.desert,
+  crystalCave: {
+    id: 'crystalCave',
+    displayName: 'Crystal Cave',
+    generateChunkData: generateCrystalCaveChunkData,
+    settings: allBiomeSettings.crystalCave,
   },
   // Add other biomes here as they are developed
 };

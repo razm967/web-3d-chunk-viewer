@@ -23,6 +23,15 @@ import {
   VOXEL_TYPE_STONE_DARK,  // Added
   VOXEL_TYPE_FOREST_LEAVES_ALT, // Added for forest biome alternate leaves
   VOXEL_TYPE_SNOW, // Added for snow
+  // Crystal cave voxel types
+  VOXEL_TYPE_CRYSTAL_RED,
+  VOXEL_TYPE_CRYSTAL_BLUE,
+  VOXEL_TYPE_CRYSTAL_GREEN,
+  VOXEL_TYPE_CRYSTAL_PURPLE,
+  VOXEL_TYPE_CRYSTAL_CLEAR,
+  VOXEL_TYPE_CAVE_WALL,
+  VOXEL_TYPE_CAVE_FLOOR,
+  VOXEL_TYPE_GLOWSTONE,
 } from '@/lib/chunkUtils';
 import * as THREE from 'three';
 
@@ -61,6 +70,76 @@ const stoneDarkColor = new THREE.Color(0x686868);  // Darker grey for stone
 const forestLeavesAltColor = new THREE.Color(0x558B2F); // Alternate leaf color
 const snowColor = new THREE.Color(0xFFFFFF); // Pure white for snow
 
+// Crystal colors with emissive properties
+const crystalRedColor = new THREE.Color(0xFF4444); // Bright red
+const crystalBlueColor = new THREE.Color(0x4488FF); // Bright blue
+const crystalGreenColor = new THREE.Color(0x44FF44); // Bright green
+const crystalPurpleColor = new THREE.Color(0xAA44FF);
+const crystalClearColor = new THREE.Color(0xF0F0FF); // Clear/white with slight blue tint
+const caveWallColor = new THREE.Color(0x666666); // Lighter grey for cave walls (was 0x333333)
+const caveFloorColor = new THREE.Color(0x777777); // Slightly lighter grey for cave floor (was 0x444444)
+const glowstoneColor = new THREE.Color(0xFFFF88); // Bright yellow for glowstone
+
+// Enhanced crystal materials with emissive properties and transparency
+const crystalRedMaterial = new THREE.MeshStandardMaterial({ 
+  color: crystalRedColor,
+  emissive: new THREE.Color(0xFF2222), // Much stronger red emissive glow
+  emissiveIntensity: 3.0, // Dramatically increased from 0.8 to 3.0
+  opacity: 0.8, 
+  transparent: true,
+  roughness: 0.05, // More reflective (reduced from 0.1)
+  metalness: 0.3 // Increased from 0.1 for better light reflection
+});
+
+const crystalBlueMaterial = new THREE.MeshStandardMaterial({ 
+  color: crystalBlueColor,
+  emissive: new THREE.Color(0x2222FF), // Much stronger blue emissive glow
+  emissiveIntensity: 3.0, // Dramatically increased from 0.8 to 3.0
+  opacity: 0.8, 
+  transparent: true,
+  roughness: 0.05, // More reflective
+  metalness: 0.3 // Increased for better light reflection
+});
+
+const crystalGreenMaterial = new THREE.MeshStandardMaterial({ 
+  color: crystalGreenColor,
+  emissive: new THREE.Color(0x22FF22), // Much stronger green emissive glow
+  emissiveIntensity: 3.0, // Dramatically increased from 0.8 to 3.0
+  opacity: 0.8, 
+  transparent: true,
+  roughness: 0.05, // More reflective
+  metalness: 0.3 // Increased for better light reflection
+});
+
+const crystalPurpleMaterial = new THREE.MeshStandardMaterial({ 
+  color: crystalPurpleColor,
+  emissive: new THREE.Color(0xAA22FF), // Much stronger purple emissive glow
+  emissiveIntensity: 3.0, // Dramatically increased from 0.8 to 3.0
+  opacity: 0.8, 
+  transparent: true,
+  roughness: 0.05, // More reflective
+  metalness: 0.3 // Increased for better light reflection
+});
+
+const crystalClearMaterial = new THREE.MeshStandardMaterial({ 
+  color: crystalClearColor,
+  emissive: new THREE.Color(0xAAAAFF), // Much stronger white-blue emissive glow
+  emissiveIntensity: 2.5, // Dramatically increased from 0.6 to 2.5
+  opacity: 0.7, 
+  transparent: true,
+  roughness: 0.02, // Very reflective
+  metalness: 0.4 // High metalness for crystal-like reflection
+});
+
+// Enhanced glowstone material with stronger emissive properties
+const glowstoneMaterial = new THREE.MeshStandardMaterial({ 
+  color: glowstoneColor,
+  emissive: new THREE.Color(0x444422), // Warm yellow emissive glow
+  emissiveIntensity: 0.5,
+  roughness: 0.3,
+  metalness: 0.0
+});
+
 // Water material with transparency
 const waterMaterial = new THREE.MeshStandardMaterial({ 
   color: waterColor, 
@@ -81,9 +160,12 @@ export default function Chunk({
   position = [0, 0, 0], 
   voxelData: initialVoxelData,
   showWireframe = false,
-  hdrPath
+  hdrPath,
 }: ChunkProps) {
-  const { scene } = useThree(); // Get scene, removed unused camera
+  const { scene, gl } = useThree(); // Get scene and renderer (gl)
+
+  // State for crystal lights
+  // const [crystalLights, setCrystalLights] = React.useState<Array<{position: [number, number, number], color: string, intensity: number}>>([]);
 
   // Effect for loading HDR and setting background/environment
   useEffect(() => {
@@ -95,19 +177,32 @@ export default function Chunk({
         hdrPath,
         (texture) => {
           texture.mapping = THREE.EquirectangularReflectionMapping;
-          scene.background = texture;     // Set HDR as direct background
-          scene.environment = texture;    // Use for scene lighting/reflections
+          
+          // Set HDR as environment and background
+          scene.background = texture;
+          scene.environment = texture;
+          
+          // Make the HDR much darker ONLY for cave HDR
+          if (hdrPath && hdrPath.includes('cave')) {
+            gl.toneMappingExposure = 0.3; // Slightly higher exposure to see crystal glow better
+          } else {
+            gl.toneMappingExposure = 1.0; // Normal exposure for other HDRs
+          }
         },
         undefined, // onProgress
         (error) => {
           console.error(`Failed to load HDR from ${hdrPath}: `, error);
-          scene.background = skyBlueColor; // Fallback to solid color for background on load error
-          scene.environment = null;        // Clear environment on error
+          // Use a much darker fallback color
+          const darkSkyColor = new THREE.Color(0x111122); // Very dark blue
+          scene.background = darkSkyColor;
+          scene.environment = null;
         }
       );
     } else {
-      console.log(`[Chunk.tsx] No valid HDR path, setting blue background.`);
-      scene.background = skyBlueColor;
+      console.log(`[Chunk.tsx] No valid HDR path, setting dark background.`);
+      // Use a much darker fallback color
+      const darkSkyColor = new THREE.Color(0x111122); // Very dark blue instead of light blue
+      scene.background = darkSkyColor;
       scene.environment = null;
     }
 
@@ -129,7 +224,7 @@ export default function Chunk({
       scene.background = null; // Clear background reference
       scene.environment = null; // Clear environment reference
     };
-  }, [scene, hdrPath]); // Add hdrPath to dependency array
+  }, [scene, hdrPath]); // Removed gl from dependency array
 
   // Existing refs
   const grassMeshRef = useRef<THREE.InstancedMesh>(null!);
@@ -164,6 +259,16 @@ export default function Chunk({
   // Add snow mesh ref
   const snowMeshRef = useRef<THREE.InstancedMesh>(null!);
 
+  // Crystal cave mesh refs
+  const crystalRedMeshRef = useRef<THREE.InstancedMesh>(null!);
+  const crystalBlueMeshRef = useRef<THREE.InstancedMesh>(null!);
+  const crystalGreenMeshRef = useRef<THREE.InstancedMesh>(null!);
+  const crystalPurpleMeshRef = useRef<THREE.InstancedMesh>(null!);
+  const crystalClearMeshRef = useRef<THREE.InstancedMesh>(null!);
+  const caveWallMeshRef = useRef<THREE.InstancedMesh>(null!);
+  const caveFloorMeshRef = useRef<THREE.InstancedMesh>(null!);
+  const glowstoneMeshRef = useRef<THREE.InstancedMesh>(null!);
+
   const currentVoxelData = useMemo(() => initialVoxelData, [initialVoxelData]);
 
   useEffect(() => {
@@ -177,7 +282,12 @@ export default function Chunk({
         rockMeshRef.current && beachGrassMeshRef.current &&
         forestTrunkMeshRef.current && forestLeavesMeshRef.current && forestFloorDetailMeshRef.current &&
         pebbleMeshRef.current && stoneMeshRef.current && 
-        stoneLightMeshRef.current && stoneDarkMeshRef.current && forestLeavesAltMeshRef.current;
+        stoneLightMeshRef.current && stoneDarkMeshRef.current && forestLeavesAltMeshRef.current &&
+        snowMeshRef.current &&
+        // Crystal cave mesh refs
+        crystalRedMeshRef.current && crystalBlueMeshRef.current && crystalGreenMeshRef.current &&
+        crystalPurpleMeshRef.current && crystalClearMeshRef.current && caveWallMeshRef.current &&
+        caveFloorMeshRef.current && glowstoneMeshRef.current;
 
     if (!instancedMeshesReady) return;
     
@@ -211,6 +321,16 @@ export default function Chunk({
     let stoneDarkCount = 0; // Added
     let forestLeavesAltCount = 0; // Counter for alternate leaves
     let snowCount = 0; // Added for snow
+
+    // Crystal cave counters
+    let crystalRedCount = 0;
+    let crystalBlueCount = 0;
+    let crystalGreenCount = 0;
+    let crystalPurpleCount = 0;
+    let crystalClearCount = 0;
+    let caveWallCount = 0;
+    let caveFloorCount = 0;
+    let glowstoneCount = 0;
 
     // Water geometry data
     const waterVertices: number[] = [];
@@ -400,6 +520,32 @@ export default function Chunk({
               }
               break;
             } // End VOXEL_TYPE_WATER case
+
+            // Crystal cave voxel types
+            case VOXEL_TYPE_CRYSTAL_RED:
+              crystalRedMeshRef.current.setMatrixAt(crystalRedCount++, tempObject.matrix);
+              break;
+            case VOXEL_TYPE_CRYSTAL_BLUE:
+              crystalBlueMeshRef.current.setMatrixAt(crystalBlueCount++, tempObject.matrix);
+              break;
+            case VOXEL_TYPE_CRYSTAL_GREEN:
+              crystalGreenMeshRef.current.setMatrixAt(crystalGreenCount++, tempObject.matrix);
+              break;
+            case VOXEL_TYPE_CRYSTAL_PURPLE:
+              crystalPurpleMeshRef.current.setMatrixAt(crystalPurpleCount++, tempObject.matrix);
+              break;
+            case VOXEL_TYPE_CRYSTAL_CLEAR:
+              crystalClearMeshRef.current.setMatrixAt(crystalClearCount++, tempObject.matrix);
+              break;
+            case VOXEL_TYPE_CAVE_WALL:
+              caveWallMeshRef.current.setMatrixAt(caveWallCount++, tempObject.matrix);
+              break;
+            case VOXEL_TYPE_CAVE_FLOOR:
+              caveFloorMeshRef.current.setMatrixAt(caveFloorCount++, tempObject.matrix);
+              break;
+            case VOXEL_TYPE_GLOWSTONE:
+              glowstoneMeshRef.current.setMatrixAt(glowstoneCount++, tempObject.matrix);
+              break;
           }
         }
       }
@@ -471,6 +617,58 @@ export default function Chunk({
       }
     }
 
+    // Crystal cave counts
+    crystalRedMeshRef.current.count = crystalRedCount;
+    crystalBlueMeshRef.current.count = crystalBlueCount;
+    crystalGreenMeshRef.current.count = crystalGreenCount;
+    crystalPurpleMeshRef.current.count = crystalPurpleCount;
+    crystalClearMeshRef.current.count = crystalClearCount;
+    caveWallMeshRef.current.count = caveWallCount;
+    caveFloorMeshRef.current.count = caveFloorCount;
+    glowstoneMeshRef.current.count = glowstoneCount;
+
+    // Crystal cave instance matrix updates
+    if (crystalRedMeshRef.current.instanceMatrix) crystalRedMeshRef.current.instanceMatrix.needsUpdate = true;
+    if (crystalBlueMeshRef.current.instanceMatrix) crystalBlueMeshRef.current.instanceMatrix.needsUpdate = true;
+    if (crystalGreenMeshRef.current.instanceMatrix) crystalGreenMeshRef.current.instanceMatrix.needsUpdate = true;
+    if (crystalPurpleMeshRef.current.instanceMatrix) crystalPurpleMeshRef.current.instanceMatrix.needsUpdate = true;
+    if (crystalClearMeshRef.current.instanceMatrix) crystalClearMeshRef.current.instanceMatrix.needsUpdate = true;
+    if (caveWallMeshRef.current.instanceMatrix) caveWallMeshRef.current.instanceMatrix.needsUpdate = true;
+    if (caveFloorMeshRef.current.instanceMatrix) caveFloorMeshRef.current.instanceMatrix.needsUpdate = true;
+    if (glowstoneMeshRef.current.instanceMatrix) glowstoneMeshRef.current.instanceMatrix.needsUpdate = true;
+
+    // Store crystal positions for point lights
+    const crystalLights: Array<{position: [number, number, number], color: string, intensity: number}> = [];
+    
+    // Extract crystal positions from instance matrices for lighting
+    const extractCrystalPositions = (mesh: THREE.InstancedMesh, color: string, intensity: number) => {
+      if (!mesh || mesh.count === 0) return;
+      
+      const matrix = new THREE.Matrix4();
+      const position = new THREE.Vector3();
+      
+      // Sample every 3rd crystal to avoid too many lights (performance)
+      for (let i = 0; i < Math.min(mesh.count, 20); i += 3) {
+        mesh.getMatrixAt(i, matrix);
+        position.setFromMatrixPosition(matrix);
+        crystalLights.push({
+          position: [position.x, position.y, position.z],
+          color,
+          intensity
+        });
+      }
+    };
+    
+    // Extract positions from each crystal type
+    extractCrystalPositions(crystalRedMeshRef.current, '#FF4444', 2.0);
+    extractCrystalPositions(crystalBlueMeshRef.current, '#4488FF', 2.0);
+    extractCrystalPositions(crystalGreenMeshRef.current, '#44FF44', 2.0);
+    extractCrystalPositions(crystalPurpleMeshRef.current, '#AA44FF', 2.0);
+    extractCrystalPositions(crystalClearMeshRef.current, '#F0F0FF', 1.5);
+    
+    // Store lights in scene userData for rendering
+    // scene.userData.crystalLights = crystalLights; // Removed - using state instead
+
     // Cleanup function (optional, but good practice for listeners or manual THREE object disposal)
     return () => {
       // Dispose of geometries and materials if they were created manually and are not part of JSX
@@ -479,14 +677,14 @@ export default function Chunk({
 
   return (
     <group position={position}>
-      {/* Ambient Light for overall scene illumination - reduced for evening */}
-      <ambientLight intensity={0.2} color="#FFDDBB" /> {/* Softer, slightly warm ambient */}
+      {/* Ambient Light for overall scene illumination - much darker */}
+      <ambientLight intensity={0.05} color="#FFDDBB" /> {/* Reduced from 0.2 to 0.05 */}
 
-      {/* Directional Light to simulate a low sun and cast long shadows */}
+      {/* Directional Light to simulate a low sun and cast long shadows - much darker */}
       <directionalLight 
         color="#FFA500" // Orange color for sunset
         position={[15, 7, 10]} // Lowered Y, adjusted X/Z for angled evening light
-        intensity={0.3} // Reduced intensity for evening
+        intensity={0.08} // Reduced from 0.3 to 0.08 for much darker lighting
         castShadow 
         shadow-mapSize-width={1024} 
         shadow-mapSize-height={1024}
@@ -673,6 +871,110 @@ export default function Chunk({
         <meshStandardMaterial color={snowColor} />
       </instancedMesh>
       {showWireframe && snowMeshRef.current && React.cloneElement(instancedWireframeMaterialElement, { geometry: snowMeshRef.current.geometry })}
+
+      {/* Crystal Red */}
+      <instancedMesh 
+        ref={crystalRedMeshRef} 
+        args={[undefined, undefined, CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE]} 
+        castShadow 
+        receiveShadow 
+        frustumCulled={false}
+      >
+        <boxGeometry args={[1, 1, 1]} />
+        <primitive object={crystalRedMaterial} />
+      </instancedMesh>
+      {showWireframe && crystalRedMeshRef.current && React.cloneElement(instancedWireframeMaterialElement, { geometry: crystalRedMeshRef.current.geometry })}
+
+      {/* Crystal Blue */}
+      <instancedMesh 
+        ref={crystalBlueMeshRef} 
+        args={[undefined, undefined, CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE]} 
+        castShadow 
+        receiveShadow 
+        frustumCulled={false}
+      >
+        <boxGeometry args={[1, 1, 1]} />
+        <primitive object={crystalBlueMaterial} />
+      </instancedMesh>
+      {showWireframe && crystalBlueMeshRef.current && React.cloneElement(instancedWireframeMaterialElement, { geometry: crystalBlueMeshRef.current.geometry })}
+
+      {/* Crystal Green */}
+      <instancedMesh 
+        ref={crystalGreenMeshRef} 
+        args={[undefined, undefined, CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE]} 
+        castShadow 
+        receiveShadow 
+        frustumCulled={false}
+      >
+        <boxGeometry args={[1, 1, 1]} />
+        <primitive object={crystalGreenMaterial} />
+      </instancedMesh>
+      {showWireframe && crystalGreenMeshRef.current && React.cloneElement(instancedWireframeMaterialElement, { geometry: crystalGreenMeshRef.current.geometry })}
+
+      {/* Crystal Purple */}
+      <instancedMesh 
+        ref={crystalPurpleMeshRef} 
+        args={[undefined, undefined, CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE]} 
+        castShadow 
+        receiveShadow 
+        frustumCulled={false}
+      >
+        <boxGeometry args={[1, 1, 1]} />
+        <primitive object={crystalPurpleMaterial} />
+      </instancedMesh>
+      {showWireframe && crystalPurpleMeshRef.current && React.cloneElement(instancedWireframeMaterialElement, { geometry: crystalPurpleMeshRef.current.geometry })}
+
+      {/* Crystal Clear */}
+      <instancedMesh 
+        ref={crystalClearMeshRef} 
+        args={[undefined, undefined, CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE]} 
+        castShadow 
+        receiveShadow 
+        frustumCulled={false}
+      >
+        <boxGeometry args={[1, 1, 1]} />
+        <primitive object={crystalClearMaterial} />
+      </instancedMesh>
+      {showWireframe && crystalClearMeshRef.current && React.cloneElement(instancedWireframeMaterialElement, { geometry: crystalClearMeshRef.current.geometry })}
+
+      {/* Cave Wall */}
+      <instancedMesh 
+        ref={caveWallMeshRef} 
+        args={[undefined, undefined, CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE]} 
+        castShadow 
+        receiveShadow 
+        frustumCulled={false}
+      >
+        <boxGeometry args={[1, 1, 1]} />
+        <meshStandardMaterial color={caveWallColor} />
+      </instancedMesh>
+      {showWireframe && caveWallMeshRef.current && React.cloneElement(instancedWireframeMaterialElement, { geometry: caveWallMeshRef.current.geometry })}
+
+      {/* Cave Floor */}
+      <instancedMesh 
+        ref={caveFloorMeshRef} 
+        args={[undefined, undefined, CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE]} 
+        castShadow 
+        receiveShadow 
+        frustumCulled={false}
+      >
+        <boxGeometry args={[1, 1, 1]} />
+        <meshStandardMaterial color={caveFloorColor} />
+      </instancedMesh>
+      {showWireframe && caveFloorMeshRef.current && React.cloneElement(instancedWireframeMaterialElement, { geometry: caveFloorMeshRef.current.geometry })}
+
+      {/* Glowstone */}
+      <instancedMesh 
+        ref={glowstoneMeshRef} 
+        args={[undefined, undefined, CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE]} 
+        castShadow 
+        receiveShadow 
+        frustumCulled={false}
+      >
+        <boxGeometry args={[1, 1, 1]} />
+        <primitive object={glowstoneMaterial} />
+      </instancedMesh>
+      {showWireframe && glowstoneMeshRef.current && React.cloneElement(instancedWireframeMaterialElement, { geometry: glowstoneMeshRef.current.geometry })}
 
       {/* Custom Water Mesh */}
       <mesh ref={customWaterMeshRef} material={showWireframe ? wireframeMaterialInstance : waterMaterial} castShadow receiveShadow>

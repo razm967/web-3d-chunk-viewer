@@ -1,5 +1,3 @@
-import { CHUNK_HEIGHT } from './chunkUtils';
-
 export interface BeachTreeSettings {
   countMin: number;
   countMax: number;
@@ -109,6 +107,14 @@ export interface ForestBiomeSettingsType {
   dirtStoneTransition: DirtStoneTransitionSettings;
 }
 
+// Define more specific types for Desert and Jungle when their settings are fleshed out
+// For now, a placeholder allowing name and other potential common fields
+export interface BaseBiomeSettings {
+  name: string;
+  hdrPath?: string | null; 
+  // Add other common properties if any
+}
+
 // Mountain biome interfaces
 export interface MountainVegetationSettings {
   grassDensityFactor: number; // Chance for grass at lower elevations
@@ -163,6 +169,46 @@ export interface MountainBiomeSettingsType {
   vegetation: MountainVegetationSettings;
   snow: MountainSnowSettings;
   rocks: MountainRockSettings;
+}
+
+export type DesertBiomeSettingsType = BaseBiomeSettings;
+export type JungleBiomeSettingsType = BaseBiomeSettings;
+
+// Crystal Cave biome interfaces
+export interface CrystalCaveTunnelSettings {
+  depth: number; // Depth from surface (factor of CHUNK_HEIGHT)
+  minWidth: number; // Minimum tunnel width
+  maxWidth: number; // Maximum tunnel width
+  minHeight: number; // Minimum tunnel height
+  maxHeight: number; // Maximum tunnel height
+  noiseScale: number; // Scale for tunnel shape variation
+  lengthFactor: number; // How much of chunk width the tunnel spans
+}
+
+export interface CrystalCaveFormationSettings {
+  clusterChance: number; // Chance for crystal clusters on surfaces
+  veinChance: number; // Chance for crystal veins along walls
+  glowstoneChance: number; // Chance for glowstone light sources
+  maxCrystalClusterSize: number; // Maximum crystals per cluster
+  veinLength: number; // Maximum length of crystal veins
+  colorDistribution: { // Probability weights for each crystal color
+    red: number;
+    blue: number;
+    green: number;
+    purple: number;
+    clear: number;
+  };
+}
+
+export interface CrystalCaveBiomeSettingsType {
+  name: string;
+  hdrPath: string | null;
+  surfaceLayer: {
+    thickness: number; // Surface layer thickness above tunnel
+    materialType: number; // Voxel type for surface (stone, dirt, etc.)
+  };
+  tunnel: CrystalCaveTunnelSettings;
+  formations: CrystalCaveFormationSettings;
 }
 
 export const beachBiomeSettings: BeachBiomeSettingsType = {
@@ -314,54 +360,59 @@ export const mountainBiomeSettings: MountainBiomeSettingsType = {
   },
 };
 
-export interface DesertDuneSettings {
-  noiseScale: number;
-  amplitude: number;
-  frequency: number;
-  ridgeOffset: number;
-}
-
-export interface DesertCactusSettings {
-  chance: number;
-  minHeight: number;
-  maxHeight: number;
-  maxCactiPerChunk: number;
-  minDistanceBetween: number;
-}
-
-export interface DesertBiomeSettingsType {
-  name: string;
-  hdrPath: string | null;
-  baseHeight: number;
-  dunes: DesertDuneSettings;
-  cacti: DesertCactusSettings;
-  sandVariationChance: number;
-}
-
 export const desertBiomeSettings: DesertBiomeSettingsType = {
-  name: "Desert",
-  hdrPath: '/desert.hdr',
-  baseHeight: CHUNK_HEIGHT / 3,
-  dunes: {
-    noiseScale: 90,
-    amplitude: 10,
-    frequency: 0.02,
-    ridgeOffset: 0.6
+    name: "Desert",
+    // TODO: Add desert specific settings later
+};
+
+export const jungleBiomeSettings: JungleBiomeSettingsType = {
+    name: "Jungle",
+    // TODO: Add jungle specific settings later
+};
+
+export const crystalCaveBiomeSettings: CrystalCaveBiomeSettingsType = {
+  name: "Crystal Cave",
+  hdrPath: '/cave.hdr', // We'll need a dark cave HDR
+  
+  surfaceLayer: {
+    thickness: 10, // 10 blocks of surface material above tunnel
+    materialType: 20, // VOXEL_TYPE_STONE
   },
-  cacti: {
-    chance: 0.02,
-    minHeight: 5,
-    maxHeight: 12,
-    maxCactiPerChunk: 12,
-    minDistanceBetween: 8
+  
+  tunnel: {
+    depth: 0.35, // 35% down from surface
+    minWidth: 8, // Minimum 8 blocks wide
+    maxWidth: 16, // Maximum 16 blocks wide
+    minHeight: 6, // Minimum 6 blocks tall
+    maxHeight: 12, // Maximum 12 blocks tall
+    noiseScale: 30, // Noise scale for organic tunnel shapes
+    lengthFactor: 0.8, // Tunnel spans 80% of chunk width
   },
-  sandVariationChance: 0.3
+  
+  formations: {
+    clusterChance: 0.15, // 15% chance for crystal clusters on tunnel surfaces
+    veinChance: 0.08, // 8% chance for crystal veins
+    glowstoneChance: 0.05, // 5% chance for glowstone placement
+    maxCrystalClusterSize: 4, // Up to 4 crystals per cluster
+    veinLength: 8, // Crystal veins up to 8 blocks long
+    colorDistribution: {
+      red: 0.2,    // 20% red crystals
+      blue: 0.25,  // 25% blue crystals
+      green: 0.2,  // 20% green crystals
+      purple: 0.15, // 15% purple crystals
+      clear: 0.2,  // 20% clear crystals
+    },
+  },
 };
 
 // A way to easily access settings by biome name or type
-export const allBiomeSettings = {
+export const allBiomeSettings: { [key: string]: BeachBiomeSettingsType | ForestBiomeSettingsType | MountainBiomeSettingsType | DesertBiomeSettingsType | JungleBiomeSettingsType | CrystalCaveBiomeSettingsType } = {
   beach: beachBiomeSettings,
   forest: forestBiomeSettings,
   mountain: mountainBiomeSettings,
-  desert: desertBiomeSettings,
-}; 
+  desert: desertBiomeSettings as DesertBiomeSettingsType, // Cast for now
+  jungle: jungleBiomeSettings as JungleBiomeSettingsType, // Cast for now
+  crystalCave: crystalCaveBiomeSettings,
+};
+
+ 

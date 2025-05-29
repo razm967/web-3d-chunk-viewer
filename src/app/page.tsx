@@ -1,170 +1,384 @@
 'use client';
 
-import { Suspense, useState, useEffect, KeyboardEvent } from 'react';
+import { Suspense, useState, useEffect, KeyboardEvent, useRef } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { OrbitControls, PerspectiveCamera, Stats } from '@react-three/drei';
+import { OrbitControls, PerspectiveCamera, FlyControls } from '@react-three/drei';
 import Chunk from '@/components/canvas/Chunk';
+import FirstPersonCamera from '@/components/canvas/FirstPersonCamera';
 import { Voxel, CHUNK_SIZE, CHUNK_HEIGHT } from '@/lib/chunkUtils';
 import {
   getAvailableBiomes,
   getBiomeById,
   generateBiomeSpecificSeed,
   Biome
-} from '@/lib/biomeManager'; // Import biome utilities
+} from '@/lib/biomeManager';
+import EntrancePage from '@/components/ui/EntrancePage';
+import LoadingScreen from '@/components/ui/LoadingScreen';
+import { 
+  FaUmbrellaBeach, 
+  FaTree, 
+  FaMountain, 
+  FaGem, 
+  FaGlobe,
+  FaArrowLeft,
+  FaCog,
+  FaTimes,
+  FaDice,
+  FaRocket,
+  FaEye,
+  FaCamera,
+  FaPlane
+} from 'react-icons/fa';
 
-const DEFAULT_BIOME_ID = 'beach'; // Or your preferred default
+type AppState = 'entrance' | 'loading' | 'world';
+type CameraMode = 'orbit' | 'firstPerson' | 'fly';
 
 export default function HomePage() {
+  const [appState, setAppState] = useState<AppState>('entrance');
+  const [selectedBiome, setSelectedBiome] = useState<string>('');
+  const [selectedSeed, setSelectedSeed] = useState<string>('');
+  const [loadingProgress, setLoadingProgress] = useState(0);
+  const [showLoadingOverlay, setShowLoadingOverlay] = useState(false);
+  
+  // World viewer state
   const [availableBiomes, setAvailableBiomes] = useState<Biome[]>([]);
-  const [currentBiomeId, setCurrentBiomeId] = useState<string>(DEFAULT_BIOME_ID);
   const [terrainData, setTerrainData] = useState<Voxel[] | null>(null);
-  const [currentSeed, setCurrentSeed] = useState('hello world'); // Generic initial seed
-  const [seedInput, setSeedInput] = useState('hello world');
   const [currentHdrPath, setCurrentHdrPath] = useState<string>('');
+  const [seedInput, setSeedInput] = useState('');
+  const [showControls, setShowControls] = useState(false);
+  const [cameraMode, setCameraMode] = useState<CameraMode>('orbit');
 
   // Load available biomes on mount
   useEffect(() => {
     setAvailableBiomes(getAvailableBiomes());
   }, []);
 
-  const generateAndSetTerrain = (biomeId: string, seed: string) => {
-    const selectedBiome = getBiomeById(biomeId);
-    if (!selectedBiome) {
+  const handleBiomeSelect = async (biomeId: string, seed: string) => {
+    setSelectedBiome(biomeId);
+    setSelectedSeed(seed);
+    setSeedInput(seed);
+    setLoadingProgress(0);
+    
+    // Generate terrain data immediately
+    const selectedBiomeData = getBiomeById(biomeId);
+    if (!selectedBiomeData) {
       console.error(`Biome with ID "${biomeId}" not found.`);
-      setTerrainData(null);
-      setCurrentHdrPath('');
+      setAppState('entrance');
       return;
     }
 
     const biomeSpecificSeed = generateBiomeSpecificSeed(biomeId, seed);
-    console.log(`[page.tsx] Generating terrain for biome: ${selectedBiome.displayName}, Seed: ${seed}, BiomeSpecificSeed: ${biomeSpecificSeed}`);
-    console.log(`[page.tsx] Biome settings hdrPath: ${selectedBiome.settings.hdrPath}`); // Log the raw hdrPath from settings
-    const newTerrainData = selectedBiome.generateChunkData(biomeSpecificSeed);
+    console.log(`[page.tsx] Generating terrain for biome: ${selectedBiomeData.displayName}, Seed: ${seed}`);
+    
+    // Set terrain data and switch to world view immediately so 3D rendering starts
+    const newTerrainData = selectedBiomeData.generateChunkData(biomeSpecificSeed);
     setTerrainData(newTerrainData);
-    const newHdrPath = selectedBiome.settings.hdrPath || '';
-    setCurrentHdrPath(newHdrPath);
-    console.log(`[page.tsx] Terrain data length: ${newTerrainData?.length}, Current HDR Path set to: "${newHdrPath}"`);
+    setCurrentHdrPath(selectedBiomeData.settings.hdrPath || '');
+    setAppState('world');
+    setShowLoadingOverlay(true);
+    
+    // Show loading overlay for 6 seconds while 3D renders
+    let progress = 0;
+    const interval = setInterval(() => {
+      progress += 100 / 60; // 60 steps over 6 seconds
+      setLoadingProgress(Math.min(progress, 100));
+      
+      if (progress >= 100) {
+        clearInterval(interval);
+        setShowLoadingOverlay(false);
+      }
+    }, 100); // Update every 100ms
   };
 
-  // Effect to regenerate terrain when currentBiomeId or currentSeed changes
-  useEffect(() => {
-    if (currentBiomeId && currentSeed) {
-      generateAndSetTerrain(currentBiomeId, currentSeed);
+  const handleCameraModeChange = () => {
+    // Exit pointer lock if currently active before switching modes
+    if (document.pointerLockElement) {
+      document.exitPointerLock();
     }
-  }, [currentBiomeId, currentSeed]);
+    
+    const nextMode = cameraMode === 'orbit' ? 'firstPerson' : 
+                     cameraMode === 'firstPerson' ? 'fly' : 'orbit';
+    setCameraMode(nextMode);
+  };
+
+  const handleBackToMenu = () => {
+    // Exit pointer lock before going back to menu
+    if (document.pointerLockElement) {
+      document.exitPointerLock();
+    }
+    
+    setAppState('entrance');
+    setSelectedBiome('');
+    setSelectedSeed('');
+    setLoadingProgress(0);
+    setShowLoadingOverlay(false);
+    setTerrainData(null);
+    setShowControls(false);
+    setCameraMode('orbit');
+  };
+
+  const handleRegenerateClick = async () => {
+    if (!selectedBiome) return;
+    
+    setLoadingProgress(0);
+    
+    // Generate terrain in background
+    const selectedBiomeData = getBiomeById(selectedBiome);
+    if (!selectedBiomeData) {
+      console.error(`Biome with ID "${selectedBiome}" not found.`);
+      return;
+    }
+
+    // Generate terrain data immediately
+    const biomeSpecificSeed = generateBiomeSpecificSeed(selectedBiome, seedInput);
+    console.log(`[page.tsx] Regenerating terrain for biome: ${selectedBiomeData.displayName}, Seed: ${seedInput}`);
+    
+    const newTerrainData = selectedBiomeData.generateChunkData(biomeSpecificSeed);
+    setTerrainData(newTerrainData);
+    setCurrentHdrPath(selectedBiomeData.settings.hdrPath || '');
+    setSelectedSeed(seedInput);
+    setShowLoadingOverlay(true);
+    
+    // Show loading overlay for 6 seconds while 3D renders
+    let progress = 0;
+    const interval = setInterval(() => {
+      progress += 100 / 60; // 60 steps over 6 seconds
+      setLoadingProgress(Math.min(progress, 100));
+      
+      if (progress >= 100) {
+        clearInterval(interval);
+        setShowLoadingOverlay(false);
+      }
+    }, 100); // Update every 100ms
+  };
 
   const handleSeedInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setSeedInput(event.target.value);
   };
 
-  const handleBiomeChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    setCurrentBiomeId(event.target.value);
-    // Optionally, you might want to reset the seed or generate with the current seed for the new biome immediately.
-    // For now, it will regenerate on the next manual regenerate or if currentSeed changes.
-  };
-
-  const handleRegenerateClick = () => {
-    setCurrentSeed(seedInput); // This will trigger the useEffect above
-    // generateAndSetTerrain(currentBiomeId, seedInput); // Direct call, also an option
-  };
-
   const handleSeedInputKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Enter') {
-      setCurrentSeed(seedInput);
+      handleRegenerateClick();
     }
   };
-  
-  const selectedBiomeDisplayName = getBiomeById(currentBiomeId)?.displayName || 'Unknown Biome';
 
-  console.log(`[page.tsx] Rendering Chunk. terrainData is ${terrainData ? 'set' : 'null'}, currentHdrPath is "${currentHdrPath}"`);
+  const getBiomeEmoji = (biomeId: string) => {
+    switch (biomeId) {
+      case 'beach': return <FaUmbrellaBeach size={20} />;
+      case 'forest': return <FaTree size={20} />;
+      case 'mountain': return <FaMountain size={20} />;
+      case 'crystalCave': return <FaGem size={20} />;
+      default: return <FaGlobe size={20} />;
+    }
+  };
 
-  return (
-    <div style={{ position: 'relative', width: '100vw', height: '100vh' }}>
-      <div style={{
-        position: 'absolute',
-        top: '10px',
-        left: '10px',
-        zIndex: 1,
-        background: 'rgba(0, 0, 0, 0.7)',
-        padding: '10px',
-        borderRadius: '5px',
-        color: 'white',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '10px',
-        fontFamily: 'sans-serif'
-      }}>
-        <h3 style={{ margin: '0 0 10px 0', fontSize: '1.2em' }}>
-          {/* Display current biome name */}
-          3D Voxel World ({selectedBiomeDisplayName} {CHUNK_SIZE}x{CHUNK_HEIGHT}x{CHUNK_SIZE})
-        </h3>
-        <div>
-          <label htmlFor="biomeSelect" style={{ marginRight: '5px' }}>Biome: </label>
-          <select 
-            id="biomeSelect" 
-            value={currentBiomeId} 
-            onChange={handleBiomeChange}
-            style={{ padding: '5px', borderRadius: '3px', border: '1px solid #555', background: '#333', color: 'white' }}
-          >
-            {availableBiomes.map(biome => (
-              <option key={biome.id} value={biome.id}>
-                {biome.displayName}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label htmlFor="seedInput" style={{ marginRight: '5px' }}>Seed: </label>
-          <input 
-            id="seedInput" 
-            type="text" 
-            value={seedInput} 
-            onChange={handleSeedInputChange}
-            onKeyDown={handleSeedInputKeyDown}
-            style={{ 
-              padding: '5px', 
-              borderRadius: '3px', 
-              border: '1px solid #555', 
-              background: '#333', 
-              color: 'white' 
-            }}
-          />
-        </div>
-        <button 
-          onClick={handleRegenerateClick} 
-          style={{ 
-            padding: '8px 12px', 
-            background: '#007bff', 
-            color: 'white', 
-            border: 'none', 
-            borderRadius: '3px', 
-            cursor: 'pointer' 
-          }}
+  const selectedBiomeData = getBiomeById(selectedBiome);
+
+  if (appState === 'entrance') {
+    return (
+      <EntrancePage 
+        onBiomeSelect={handleBiomeSelect}
+      />
+    );
+  }
+
+  if (appState === 'loading') {
+    return (
+      <LoadingScreen 
+        biomeName={selectedBiomeData?.displayName || 'Unknown'}
+        seed={selectedSeed}
+        progress={loadingProgress}
+      />
+    );
+  }
+
+  if (appState === 'world') {
+    return (
+      <div style={{ position: 'relative', width: '100vw', height: '100vh' }}>
+        {/* Loading Overlay */}
+        {showLoadingOverlay && (
+          <div className="absolute inset-0 z-50">
+            <LoadingScreen 
+              biomeName={selectedBiomeData?.displayName || 'Unknown'}
+              seed={selectedSeed}
+              progress={loadingProgress}
+            />
+          </div>
+        )}
+
+        {/* Back Button */}
+        <button
+          onClick={handleBackToMenu}
+          className="absolute top-4 left-4 z-20 bg-gray-900 bg-opacity-80 hover:bg-gray-800 hover:bg-opacity-95 text-white px-4 py-3 rounded-lg transition-all duration-200 flex items-center gap-2 border border-gray-600 hover:border-gray-500 backdrop-blur-sm transform hover:scale-105 active:scale-95 hover:shadow-xl active:shadow-md group"
         >
-          Regenerate Terrain
+          <FaArrowLeft className="w-4 h-4 transition-transform duration-200 group-hover:-translate-x-1" />
+          Back to Menu
         </button>
-        <div>Current Biome: {selectedBiomeDisplayName}</div>
-        <div>Current Seed (for biome): {currentSeed}</div>
-        <div>Chunk Size: {CHUNK_SIZE}x{CHUNK_HEIGHT}x{CHUNK_SIZE}</div> 
-      </div>
-      <Canvas style={{ background: '#27272a' }}>
-        <Suspense fallback={null}>
-          <PerspectiveCamera makeDefault position={[CHUNK_SIZE * 0.75, CHUNK_HEIGHT * 1.5, CHUNK_SIZE * 0.75]} fov={75} />
-          <OrbitControls target={[0, 0, 0]} /> 
-          <ambientLight intensity={0.8} />
-          <directionalLight 
-            position={[CHUNK_SIZE / 2, CHUNK_HEIGHT * 2, CHUNK_SIZE / 4]}
-            intensity={1.5}
-            castShadow
-            shadow-mapSize-width={2048} 
-            shadow-mapSize-height={2048}
-          />
-          <pointLight position={[-CHUNK_SIZE / 2, -CHUNK_HEIGHT, -CHUNK_SIZE / 2]} intensity={0.5} />
 
-          {terrainData && <Chunk voxelData={terrainData} hdrPath={currentHdrPath} />}
-        </Suspense>
-        <Stats />
-      </Canvas>
-    </div>
-  );
+        {/* Controls Toggle */}
+        <button
+          onClick={() => setShowControls(!showControls)}
+          className="absolute top-4 right-4 z-20 bg-gray-900 bg-opacity-80 hover:bg-gray-800 hover:bg-opacity-95 text-white px-4 py-3 rounded-lg transition-all duration-200 flex items-center gap-2 border border-gray-600 hover:border-gray-500 backdrop-blur-sm transform hover:scale-105 active:scale-95 hover:shadow-xl active:shadow-md group"
+        >
+          {showControls ? (
+            <>
+              <FaTimes className="w-4 h-4 transition-transform duration-200 group-hover:rotate-90" />
+              Hide Controls
+            </>
+          ) : (
+            <>
+              <FaCog className="w-4 h-4 transition-transform duration-200 group-hover:rotate-45" />
+              Show Controls
+            </>
+          )}
+        </button>
+
+        {/* Camera Mode Toggle */}
+        <button
+          onClick={handleCameraModeChange}
+          className="absolute top-4 right-52 z-20 bg-gray-900 bg-opacity-80 hover:bg-gray-800 hover:bg-opacity-95 text-white px-4 py-3 rounded-lg transition-all duration-200 flex items-center gap-2 border border-gray-600 hover:border-gray-500 backdrop-blur-sm transform hover:scale-105 active:scale-95 hover:shadow-xl active:shadow-md group"
+        >
+          {cameraMode === 'orbit' ? (
+            <>
+              <FaEye className="w-4 h-4 transition-transform duration-200 group-hover:scale-110" />
+              First Person
+            </>
+          ) : cameraMode === 'firstPerson' ? (
+            <>
+              <FaPlane className="w-4 h-4 transition-transform duration-200 group-hover:scale-110" />
+              Fly Mode
+            </>
+          ) : (
+            <>
+              <FaCamera className="w-4 h-4 transition-transform duration-200 group-hover:scale-110" />
+              Orbit View
+            </>
+          )}
+        </button>
+
+        {/* Controls Panel */}
+        {showControls && (
+          <div className="absolute top-20 left-4 z-10 bg-gray-900 bg-opacity-90 backdrop-blur-sm rounded-xl p-6 max-w-sm border border-gray-600">
+            <div className="text-white">
+              <h3 className="text-xl font-bold mb-4 flex items-center gap-3">
+                <div className="text-gray-300">
+                  {getBiomeEmoji(selectedBiome)}
+                </div>
+                {selectedBiomeData?.displayName}
+              </h3>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-semibold mb-2 text-gray-300 flex items-center gap-2">
+                    <FaDice className="w-4 h-4" />
+                    World Seed
+                  </label>
+                  <input 
+                    type="text" 
+                    value={seedInput} 
+                    onChange={handleSeedInputChange}
+                    onKeyDown={handleSeedInputKeyDown}
+                    className="w-full px-3 py-2 rounded-lg bg-gray-800 text-white placeholder-gray-400 border border-gray-600 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition-all"
+                    placeholder="Enter seed..."
+                  />
+                </div>
+                
+                <button 
+                  onClick={handleRegenerateClick}
+                  className="w-full py-3 rounded-lg font-semibold transition-all duration-200 bg-blue-600 hover:bg-blue-700 text-white hover:shadow-lg flex items-center justify-center gap-2"
+                >
+                  <FaRocket className="w-4 h-4" />
+                  Generate New World
+                </button>
+
+                <div className="text-sm text-gray-400 space-y-1 pt-2 border-t border-gray-700">
+                  <div className="flex items-center gap-2">
+                    <FaDice className="w-3 h-3" />
+                    Current Seed: {selectedSeed}
+                  </div>
+                  <div>Chunk Size: {CHUNK_SIZE}×{CHUNK_HEIGHT}×{CHUNK_SIZE}</div>
+                  <div className="flex items-center gap-2">
+                    {cameraMode === 'orbit' ? (
+                      <FaCamera className="w-3 h-3" />
+                    ) : cameraMode === 'firstPerson' ? (
+                      <FaPlane className="w-3 h-3" />
+                    ) : (
+                      <FaEye className="w-3 h-3" />
+                    )}
+                    Camera: {cameraMode === 'orbit' ? 'Orbit View' : cameraMode === 'firstPerson' ? 'First Person' : 'Fly Mode'}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 3D Canvas */}
+        <Canvas style={{ background: '#27272a' }}>
+          <Suspense fallback={null}>
+            <PerspectiveCamera 
+              makeDefault 
+              position={cameraMode === 'orbit' 
+                ? [CHUNK_SIZE * 0.75, CHUNK_HEIGHT * 1.5, CHUNK_SIZE * 0.75]
+                : cameraMode === 'firstPerson' ? [0, CHUNK_HEIGHT * 0.3, 0] : [0, CHUNK_HEIGHT * 0.3, 0]
+              } 
+              fov={75} 
+            />
+            
+            {cameraMode === 'orbit' ? (
+              <OrbitControls 
+                target={[0, 0, 0]}
+                enablePan={true}
+                enableZoom={true}
+                enableRotate={true}
+              />
+            ) : cameraMode === 'firstPerson' ? (
+              <FirstPersonCamera
+                movementSpeed={18}
+                lookSpeed={0.002}
+                jumpHeight={15}
+                gravity={35}
+                voxelData={terrainData || undefined}
+              />
+            ) : (
+              <FlyControls
+                movementSpeed={10}
+                rollSpeed={0.5}
+                autoForward={false}
+                dragToLook={false}
+              />
+            )}
+
+            {terrainData && (
+              <Chunk 
+                voxelData={terrainData} 
+                hdrPath={currentHdrPath}
+              />
+            )}
+          </Suspense>
+        </Canvas>
+        
+        {/* Camera Mode Instructions */}
+        {cameraMode !== 'orbit' && (
+          <div 
+            className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-20 bg-gray-900 bg-opacity-90 text-white px-6 py-3 rounded-lg border border-gray-600 backdrop-blur-sm"
+          >
+            <div className="text-center text-sm">
+              <div className="font-semibold mb-1">
+                {cameraMode === 'firstPerson' ? 'First Person Mode' : 'Fly Mode'}
+              </div>
+              <div className="text-gray-300">
+                {cameraMode === 'firstPerson' 
+                  ? 'Click to enable mouse look • WASD to move • SPACE to jump • ESC to unlock'
+                  : 'WASD to move • QE to go up/down • Mouse to look around'
+                }
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return null;
 }

@@ -38,6 +38,16 @@ export const VOXEL_TYPE_STONE_DARK = 22;  // Darker variation of stone
 export const VOXEL_TYPE_FOREST_LEAVES_ALT = 23; // Alternative leaf color for forest trees
 export const VOXEL_TYPE_SNOW = 24; // White snow for mountain peaks
 
+// New Voxel Types for Crystal Cave Biome
+export const VOXEL_TYPE_CRYSTAL_RED = 25;     // Red crystals
+export const VOXEL_TYPE_CRYSTAL_BLUE = 26;    // Blue crystals  
+export const VOXEL_TYPE_CRYSTAL_GREEN = 27;   // Green crystals
+export const VOXEL_TYPE_CRYSTAL_PURPLE = 28;  // Purple crystals
+export const VOXEL_TYPE_CRYSTAL_CLEAR = 29;   // Clear/white crystals
+export const VOXEL_TYPE_CAVE_WALL = 30;       // Dark stone cave walls
+export const VOXEL_TYPE_CAVE_FLOOR = 31;      // Cave floor material
+export const VOXEL_TYPE_GLOWSTONE = 32;       // Glowing light sources
+
 export type Voxel = number; 
 
 // Helper to get 2D noise normalized to 0-1 range
