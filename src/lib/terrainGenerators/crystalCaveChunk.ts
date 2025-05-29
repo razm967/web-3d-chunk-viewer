@@ -19,11 +19,6 @@ function getNormalizedNoise2D(noiseFunc: (x: number, y: number) => number, x: nu
   return (noiseFunc(x / scale, z / scale) + 1) / 2;
 }
 
-// Helper to get 3D noise normalized to 0-1 range
-function getNormalizedNoise3D(noiseFunc: (x: number, y: number, z: number) => number, x: number, y: number, z: number, scale: number): number {
-  return (noiseFunc(x / scale, y / scale, z / scale) + 1) / 2;
-}
-
 // Helper to choose crystal type based on distribution
 function chooseCrystalType(prng: () => number): number {
   const rand = prng();
@@ -32,72 +27,6 @@ function chooseCrystalType(prng: () => number): number {
   if (rand < 0.1) return VOXEL_TYPE_CRYSTAL_RED;      // 10% red crystals (very rare)
   if (rand < 0.5) return VOXEL_TYPE_CRYSTAL_PURPLE;   // 40% purple crystals  
   return VOXEL_TYPE_CRYSTAL_CLEAR;                    // 50% clear crystals
-}
-
-// Helper to check if a position is adjacent to empty space (tunnel)
-function isAdjacentToTunnel(data: Uint8Array, x: number, y: number, z: number): boolean {
-  const directions = [
-    [-1, 0, 0], [1, 0, 0], // left, right
-    [0, -1, 0], [0, 1, 0], // down, up
-    [0, 0, -1], [0, 0, 1]  // back, front
-  ];
-  
-  for (const [dx, dy, dz] of directions) {
-    const nx = x + dx;
-    const ny = y + dy;
-    const nz = z + dz;
-    
-    if (nx >= 0 && nx < CHUNK_SIZE && ny >= 0 && ny < CHUNK_HEIGHT && nz >= 0 && nz < CHUNK_SIZE) {
-      const index = nx + (ny * CHUNK_SIZE) + (nz * CHUNK_SIZE * CHUNK_HEIGHT);
-      if (data[index] === VOXEL_TYPE_EMPTY) {
-        return true;
-      }
-    }
-  }
-  return false;
-}
-
-// Helper to check if a position is adjacent to a cave wall
-function isAdjacentToWall(data: Uint8Array, x: number, y: number, z: number): boolean {
-  const directions = [
-    [-1, 0, 0], [1, 0, 0], // left, right
-    [0, -1, 0], [0, 1, 0], // down, up
-    [0, 0, -1], [0, 0, 1]  // back, front
-  ];
-  
-  for (const [dx, dy, dz] of directions) {
-    const nx = x + dx;
-    const ny = y + dy;
-    const nz = z + dz;
-    
-    if (nx >= 0 && nx < CHUNK_SIZE && ny >= 0 && ny < CHUNK_HEIGHT && nz >= 0 && nz < CHUNK_SIZE) {
-      const index = nx + (ny * CHUNK_SIZE) + (nz * CHUNK_SIZE * CHUNK_HEIGHT);
-      if (data[index] === VOXEL_TYPE_CAVE_WALL) {
-        return true;
-      }
-    }
-  }
-  return false;
-}
-
-// Helper to create stalactites and stalagmites
-function addCaveFormations(data: Uint8Array, x: number, y: number, z: number, prng: () => number, isFloor: boolean) {
-  const formationHeight = Math.floor(prng() * 6) + 2; // 2-7 blocks tall
-  const direction = isFloor ? 1 : -1; // Up for stalagmites, down for stalactites
-  
-  for (let i = 0; i < formationHeight; i++) {
-    const currentY = y + (direction * i);
-    if (currentY >= 0 && currentY < CHUNK_HEIGHT) {
-      const index = x + (currentY * CHUNK_SIZE) + (z * CHUNK_SIZE * CHUNK_HEIGHT);
-      if (data[index] === VOXEL_TYPE_EMPTY) {
-        // Taper the formation as it grows
-        const taperChance = 1 - (i / formationHeight);
-        if (prng() < taperChance) {
-          data[index] = VOXEL_TYPE_STONE_DARK;
-        }
-      }
-    }
-  }
 }
 
 // Helper to get varied stone types

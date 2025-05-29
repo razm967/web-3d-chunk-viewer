@@ -204,6 +204,9 @@ export default function FirstPersonCamera({
 
     // Cleanup function
     return () => {
+      // Copy ref value to avoid stale closure warning
+      const currentKeysPressed = keysPressed.current;
+      
       // Exit pointer lock if still active
       if (isLocked.current) {
         try {
@@ -214,7 +217,7 @@ export default function FirstPersonCamera({
       }
       
       // Clear pressed keys
-      keysPressed.current.clear();
+      currentKeysPressed.clear();
       
       // Remove event listeners
       document.removeEventListener('keydown', handleKeyDown);

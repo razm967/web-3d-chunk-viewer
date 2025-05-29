@@ -1,16 +1,14 @@
 'use client';
 
-import { Suspense, useState, useEffect, KeyboardEvent, useRef } from 'react';
+import { Suspense, useState, KeyboardEvent } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, PerspectiveCamera, FlyControls } from '@react-three/drei';
 import Chunk from '@/components/canvas/Chunk';
 import FirstPersonCamera from '@/components/canvas/FirstPersonCamera';
 import { Voxel, CHUNK_SIZE, CHUNK_HEIGHT } from '@/lib/chunkUtils';
 import {
-  getAvailableBiomes,
   getBiomeById,
   generateBiomeSpecificSeed,
-  Biome
 } from '@/lib/biomeManager';
 import EntrancePage from '@/components/ui/EntrancePage';
 import LoadingScreen from '@/components/ui/LoadingScreen';
