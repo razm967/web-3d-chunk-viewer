@@ -5,6 +5,7 @@ import { Canvas } from '@react-three/fiber';
 import { OrbitControls, PerspectiveCamera, FlyControls } from '@react-three/drei';
 import Chunk from '@/components/canvas/Chunk';
 import FirstPersonCamera from '@/components/canvas/FirstPersonCamera';
+import IdleOrbitControls from '@/components/canvas/IdleOrbitControls';
 import { Voxel, CHUNK_SIZE, CHUNK_HEIGHT } from '@/lib/chunkUtils';
 import {
   getBiomeById,
@@ -318,7 +319,7 @@ export default function HomePage() {
             />
             
             {cameraMode === 'orbit' ? (
-              <OrbitControls 
+              <IdleOrbitControls 
                 target={[0, 0, 0]}
                 enablePan={true}
                 enableZoom={true}
